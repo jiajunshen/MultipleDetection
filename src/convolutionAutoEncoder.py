@@ -106,7 +106,7 @@ def main(num_epochs = 30):
     
     decoder_params = lasagne.layers.get_all_params(network, trainable = True)[4:]
     updates = lasagne.updates.nesterov_momentum(
-        cost, decoder_params, learning_rate = 0.01, momentum = 0.9)
+        cost, decoder_params, learning_rate = 0.1, momentum = 0.9)
 
     reconstructed_test = lasagne.layers.get_output(network, deterministic=True)
     #reconstructed_test_loss = T.mean(-T.sum(target_var * T.log(reconstructed_test) + (1 - target_var) * T.log(1 - reconstructed_test), axis = 1))
@@ -155,7 +155,8 @@ def main(num_epochs = 30):
                 test_batches += 1
             print("Final results:")
             print("  test loss:\t\t\t{:.6f}".format(test_err / test_batches))
-    
+    weightsOfParams = lasagne.layers.get_all_param_values(network)
+    np.save("../data/mnist_clutter_autoencoder_params.npy", weightsOfParams) 
 
 if __name__ == '__main__':
     main() 
