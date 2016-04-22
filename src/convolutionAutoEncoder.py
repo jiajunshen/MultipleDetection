@@ -20,7 +20,8 @@ def build_autoencoder(input_var=None):
     # convolutions are supported as well; see the docstring.
     network = Conv2DLayer(
             network, num_filters=32, filter_size=(5, 5),
-            nonlinearity=lasagne.nonlinearities.rectify,
+#            nonlinearity=lasagne.nonlinearities.rectify,
+            nonlinearity = lasagne.nonlinearities.sigmoid,
             W=lasagne.init.GlorotUniform())
     # Expert note: Lasagne provides alternative convolutional layers that
     # override Theano's choice of which implementation to use; for details
@@ -32,7 +33,8 @@ def build_autoencoder(input_var=None):
     # Another convolution with 32 5x5 kernels, and another 2x2 pooling:
     network = Conv2DLayer(
             network, num_filters=32, filter_size=(5, 5),
-            nonlinearity=lasagne.nonlinearities.rectify)
+#            nonlinearity=lasagne.nonlinearities.rectify,
+             nonlinearity = lasagne.nonlinearities.sigmoid)
 
     network = lasagne.layers.MaxPool2DLayer(network, pool_size=(2, 2))
 
@@ -41,12 +43,14 @@ def build_autoencoder(input_var=None):
             #lasagne.layers.dropout(network, p=.5),
             network,
             num_units=256,
-            nonlinearity=lasagne.nonlinearities.rectify)
+#            nonlinearity=lasagne.nonlinearities.rectify,
+            nonlinearity = lasagne.nonlinearities.sigmoid)
 
     network = lasagne.layers.DenseLayer(
             network,
             num_units=512,
-            nonlinearity=lasagne.nonlinearities.rectify)
+#            nonlinearity=lasagne.nonlinearities.rectify,
+            nonlinearity = lasagne.nonlinearities.sigmoid)
 
     network = lasagne.layers.ReshapeLayer(
             network,
@@ -56,14 +60,16 @@ def build_autoencoder(input_var=None):
             network,
             2 )
     network = Conv2DLayer(
-            network, num_filters = 32, filter_size = 5, pad = 'full')
+            network, num_filters = 32, filter_size = 5, pad = 'full',
+            nonlinearity = lasagne.nonlinearities.sigmoid)
     
     network = lasagne.layers.Upscale2DLayer(
             network,
             2 )
 
     network = Conv2DLayer(
-            network, num_filters = 1, filter_size = 5, pad = 'full')
+            network, num_filters = 1, filter_size = 5, pad = 'full',
+            nonlinearity = lasagne.nonlinearities.sigmoid)
 
     network = lasagne.layers.ReshapeLayer(
             network, shape = (([0], -1)))
@@ -101,8 +107,8 @@ def main(num_epochs = 30):
     network = build_autoencoder(input_var)
     reconstructed_train = lasagne.layers.get_output(network, input_var)
 
-    L = T.mean(lasagne.objectives.squared_error(target_var, reconstructed_train), axis = 1)
-    #L = -T.sum(target_var * T.log(reconstructed_train) + (1 - target_var) * T.log(1 - reconstructed_train), axis=1)
+    #L = T.mean(lasagne.objectives.squared_error(target_var, reconstructed_train), axis = 1)
+    L = -T.mean(target_var * T.log(reconstructed_train) + (1 - target_var) * T.log(1 - reconstructed_train), axis=1)
     cost = T.mean(L)
     
     decoder_params = lasagne.layers.get_all_params(network, trainable = True)[4:]
@@ -120,7 +126,7 @@ def main(num_epochs = 30):
 
     print ("intialize encoder parameters")
     # We fix the encoder in this experiment
-    encoder_weights = np.load("../data/mnist_clutter_CNN_params.npy")
+    encoder_weights = np.load("../data/mnist_clutter_CNN_params_sigmoid.npy")
     encoder_model = lasagne.layers.get_all_layers(network)[4]
     # The learned weights also contains the parameters for the softmax layer. Need to crop that out.
     lasagne.layers.set_all_param_values(encoder_model, encoder_weights[:4])
@@ -128,7 +134,7 @@ def main(num_epochs = 30):
 
     print("Starting training...")
     # We iterate over epochs:
-    for epoch in range(5):
+    for epoch in range(20):
         # In each epoch, we do a full pass over the training data:
         train_err = 0
         train_batches = 0
@@ -145,7 +151,7 @@ def main(num_epochs = 30):
             epoch + 1, num_epochs, time.time() - start_time))
         print("  training loss:\t\t{:.6f}".format(train_err / train_batches))
 
-        if epoch % 5 == 0:
+        if epoch % 1 == 0:
             # After training, we compute and print the test error:
             test_err = 0
             test_batches = 0
@@ -157,7 +163,7 @@ def main(num_epochs = 30):
             print("Final results:")
             print("  test loss:\t\t\t{:.6f}".format(test_err / test_batches))
     weightsOfParams = lasagne.layers.get_all_param_values(network)
-    np.save("../data/mnist_clutter_autoencoder_params.npy", weightsOfParams) 
+    np.save("../data/mnist_clutter_autoencoder_params_sigmoid.npy", weightsOfParams) 
 
 if __name__ == '__main__':
     main() 

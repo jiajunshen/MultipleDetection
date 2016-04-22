@@ -23,12 +23,14 @@ def build_decoder(input_var = None):
             #lasagne.layers.dropout(network, p=.5),
             network,
             num_units=256,
-            nonlinearity=lasagne.nonlinearities.rectify)
+            #nonlinearity=lasagne.nonlinearities.rectify,
+            nonlinearity = lasagne.nonlinearities.sigmoid)
 
     network = lasagne.layers.DenseLayer(
             network,
             num_units=512,
-            nonlinearity=lasagne.nonlinearities.rectify)
+            #nonlinearity=lasagne.nonlinearities.rectify,
+            nonlinearity = lasagne.nonlinearities.sigmoid)
 
     network = lasagne.layers.ReshapeLayer(
             network,
@@ -38,14 +40,16 @@ def build_decoder(input_var = None):
             network,
             2 )
     network = Conv2DLayer(
-            network, num_filters = 32, filter_size = 5, pad = 'full')
+            network, num_filters = 32, filter_size = 5, pad = 'full',
+            nonlinearity = lasagne.nonlinearities.sigmoid)
 
     network = lasagne.layers.Upscale2DLayer(
             network,
             2 )
 
     network = Conv2DLayer(
-            network, num_filters = 1, filter_size = 5, pad = 'full')
+            network, num_filters = 1, filter_size = 5, pad = 'full',
+            nonlinearity = lasagne.nonlinearities.sigmoid)
 
     network = lasagne.layers.ReshapeLayer(
             network, shape = (([0], -1)))
@@ -55,7 +59,7 @@ def build_decoder(input_var = None):
 
 
 def main():
-    autoencoderWeights = np.load("../data/mnist_clutter_autoencoder_params.npy")
+    autoencoderWeights = np.load("../data/mnist_clutter_autoencoder_params_sigmoid.npy")
     inputVar = T.tensor4('input variable')
     decoderNetwork = build_decoder(inputVar)
     lasagne.layers.set_all_param_values(decoderNetwork, autoencoderWeights[4:])
@@ -63,7 +67,7 @@ def main():
     reconstructed_data = lasagne.layers.get_output(decoderNetwork, inputVar)
     reconstruct = theano.function([inputVar], reconstructed_data)
 
-    objectModels = np.load("../data/object_model.npy")
+    objectModels = np.load("../data/object_model_sigmoid.npy")
     result_object = []
     for i in range(11):
         object_images = reconstruct(np.array(objectModels[i], dtype = np.float32)).reshape(5, 28, 28)
