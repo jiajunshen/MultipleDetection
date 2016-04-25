@@ -60,7 +60,7 @@ def build_cnn(input_var=None):
     # And, finally, the 10-unit output layer with 50% dropout on its inputs:
     network = lasagne.layers.DenseLayer(
             lasagne.layers.dropout(network, p=.5),
-            num_units=11,
+            num_units=10,
             nonlinearity=lasagne.nonlinearities.softmax)
 
     return network
@@ -84,8 +84,8 @@ def main(model='mlp', num_epochs=500):
     # Load the dataset
     print("Loading data...")
     
-    #X_train, y_train, X_test, y_test = load_data("/X_train.npy", "/Y_train.npy", "/X_test.npy", "/Y_test.npy")
-    X_train, y_train, X_test, y_test = load_data("/cluttered_train_x.npy", "/cluttered_train_y.npy", "/cluttered_test_x.npy", "/cluttered_test_y.npy", dataset = "MNIST_CLUTTER")
+    X_train, y_train, X_test, y_test = load_data("/X_train.npy", "/Y_train.npy", "/X_test.npy", "/Y_test.npy")
+    #X_train, y_train, X_test, y_test = load_data("/cluttered_train_x.npy", "/cluttered_train_y.npy", "/cluttered_test_x.npy", "/cluttered_test_y.npy", dataset = "MNIST_CLUTTER")
 
     # Prepare Theano variables for inputs and targets
     input_var = T.tensor4('inputs')
@@ -107,7 +107,7 @@ def main(model='mlp', num_epochs=500):
     # Descent (SGD) with Nesterov momentum, but Lasagne offers plenty more.
     params = lasagne.layers.get_all_params(network, trainable=True)
     updates = lasagne.updates.nesterov_momentum(
-            loss, params, learning_rate=0.01, momentum=0.9)
+            loss, params, learning_rate=0.1, momentum=0.9)
 
     # Create a loss expression for validation/testing. The crucial difference
     # here is that we do a deterministic forward pass through the network,
@@ -170,7 +170,8 @@ def main(model='mlp', num_epochs=500):
             #     param_values = [f['arr_%d' % i] for i in range(len(f.files))]
             # lasagne.layers.set_all_param_values(network, param_values)
     weightsOfParams = lasagne.layers.get_all_param_values(network)
-    np.save("../data/mnist_clutter_CNN_params_sigmoid.npy", weightsOfParams)
+    #np.save("../data/mnist_clutter_CNN_params_sigmoid.npy", weightsOfParams)
+    np.save("../data/mnist_CNN_params_sigmoid.npy", weightsOfParams)
 
 
 

@@ -93,8 +93,8 @@ def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
 def main(num_epochs = 30):
     # We fix the encoder in this experiment
     print ("loading data...")
-
-    X_train, y_train, X_test, y_test = load_data("/cluttered_train_x.npy", "/cluttered_train_y.npy", "/cluttered_test_x.npy", "/cluttered_test_y.npy", dataset = "MNIST_CLUTTER")
+    X_train, y_train, X_test, y_test = load_data("/X_train.npy", "/Y_train.npy", "/X_test.npy", "/Y_test.npy")
+    #X_train, y_train, X_test, y_test = load_data("/cluttered_train_x.npy", "/cluttered_train_y.npy", "/cluttered_test_x.npy", "/cluttered_test_y.npy", dataset = "MNIST_CLUTTER")
 
     height = 28
     width = 28
@@ -126,7 +126,8 @@ def main(num_epochs = 30):
 
     print ("intialize encoder parameters")
     # We fix the encoder in this experiment
-    encoder_weights = np.load("../data/mnist_clutter_CNN_params_sigmoid.npy")
+    #encoder_weights = np.load("../data/mnist_clutter_CNN_params_sigmoid.npy")
+    encoder_weights = np.load("../data/mnist_CNN_params_sigmoid.npy")
     encoder_model = lasagne.layers.get_all_layers(network)[4]
     # The learned weights also contains the parameters for the softmax layer. Need to crop that out.
     lasagne.layers.set_all_param_values(encoder_model, encoder_weights[:4])
@@ -163,7 +164,8 @@ def main(num_epochs = 30):
             print("Final results:")
             print("  test loss:\t\t\t{:.6f}".format(test_err / test_batches))
     weightsOfParams = lasagne.layers.get_all_param_values(network)
-    np.save("../data/mnist_clutter_autoencoder_params_sigmoid.npy", weightsOfParams) 
+    #np.save("../data/mnist_clutter_autoencoder_params_sigmoid.npy", weightsOfParams) 
+    np.save("../data/mnist_autoencoder_params_sigmoid.npy", weightsOfParams) 
 
 if __name__ == '__main__':
     main() 

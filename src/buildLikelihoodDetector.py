@@ -9,7 +9,9 @@ from lasagne.layers.dnn import Conv2DDNNLayer as Conv2DLayer
 from lasagne.layers.dnn import MaxPool2DDNNLayer as MaxPool2DLayer
 from CNNForMnist import build_cnn, load_data
 import pnet
+import amitgroup.plot as gr
 
+INT_MIN = -10000000
 
 def createSampleTest(nSample = 1, sampleSize = 40):
     X_train, y_train, X_test, y_test = load_data("/X_train.npy", "/Y_train.npy", "/X_test.npy", "/Y_test.npy")
@@ -42,8 +44,8 @@ def extract(data, extract_function):
 
 def reprocess_data_for_extraction(inputX, inputShape = 28):
     returnResult = np.zeros((inputX.shape[0], inputX.shape[1] - inputShape + 1, inputX.shape[2] - inputShape + 1, inputShape, inputShape))
-    for i in range(inputX.shape[1] - inputShape):
-        for j in range(inputX.shape[2] - inputShape):
+    for i in range(inputX.shape[1] - inputShape + 1):
+        for j in range(inputX.shape[2] - inputShape + 1):
             returnResult[:,i, j] = inputX[:, slice(i, i + inputShape), slice(j, j + inputShape)]
     return returnResult
 
@@ -55,8 +57,8 @@ def nonMaximalSupress(llh, windowSize = 5):
             window = llh[:, x:x+windowSize, y:y+windowSize]
             localMax = np.amax(window, axis = (1, 2))
             maxCoord = np.unravel_index(np.argmax(window.reshape(-1, windowSize * windowSize), axis = 1) + [i * windowSize * windowSize for i in range(nSample)], (nSample, windowSize, windowSize))
-            regionCoord = tuple(maxCoord[1:] + np.array((x, y))) 
-            llh[:, x:x+windowSize, y:y+windowSize] = 0
+            regionCoord = tuple(maxCoord[1:] + np.array((x, y)).reshape(2,1))
+            llh[:, x:x+windowSize, y:y+windowSize] = INT_MIN
             llh[tuple((maxCoord[0], regionCoord[0], regionCoord[1]))] = localMax
     return llh
             
@@ -76,13 +78,17 @@ def main():
      
     print("object model classification accuracy: ", np.mean(objectModelLayer.extract(X_train_feature) == y_train))
     
-    data = createSampleTest()
+    data = createSampleTest(nSample = 1)
+    gr.images(data[0])
     processedData = reprocess_data_for_extraction(data)
     processedData_reshape = processedData.reshape(-1, 1, 28, 28)
     processedData_reshape_feature = extract_function(np.array(processedData_reshape,dtype = np.float32))
     llh_for_data = objectModelLayer.score(processedData_reshape_feature).reshape(processedData.shape[:3] + (10, ))
-    print(llh_for_data.shape)
-    print()
+    print llh_for_data.shape
+    print(np.max(llh_for_data, axis = -1))
+    print(np.argmax(llh_for_data, axis = -1))
+    print(np.argmax(llh_for_data, axis = -1)[nonMaximalSupress(np.max(llh_for_data, axis = -1), windowSize = 5) != INT_MIN])
+    print (y_train[:1]) 
 
 
 
