@@ -9,19 +9,7 @@ import theano.tensor as T
 import lasagne
 from lasagne.layers.dnn import Conv2DDNNLayer as Conv2DLayer
 from lasagne.layers.dnn import MaxPool2DDNNLayer as MaxPool2DLayer
-
-def load_data(trainingData, trainingLabel, testingData, testingLabel, dataset = "MNIST"):
-    trainingData = os.environ[dataset] + trainingData
-    trainingLabel = os.environ[dataset] + trainingLabel
-    testingData = os.environ[dataset] + testingData
-    testingLabel = os.environ[dataset] + testingLabel
-
-    X_train = np.array(np.load(trainingData), dtype = np.float32).reshape(-1, 1, 28, 28)
-    Y_train = np.array(np.load(trainingLabel), dtype = np.uint8)
-    X_test = np.array(np.load(testingData), dtype = np.float32).reshape(-1, 1, 28, 28)
-    Y_test = np.array(np.load(testingLabel), dtype = np.uint8)
-
-    return X_train, Y_train, X_test, Y_test
+from dataPreparation import load_data
 
 
 def build_cnn(input_var=None):
@@ -36,7 +24,8 @@ def build_cnn(input_var=None):
     # convolutions are supported as well; see the docstring.
     network = Conv2DLayer(
             network, num_filters=32, filter_size=(5, 5),
-            nonlinearity=lasagne.nonlinearities.sigmoid,
+            #nonlinearity=lasagne.nonlinearities.sigmoid,
+            nonlinearity=lasagne.nonlinearities.rectify,
             W=lasagne.init.GlorotUniform())
     # Expert note: Lasagne provides alternative convolutional layers that
     # override Theano's choice of which implementation to use; for details
@@ -48,14 +37,18 @@ def build_cnn(input_var=None):
     # Another convolution with 32 5x5 kernels, and another 2x2 pooling:
     network = Conv2DLayer(
             network, num_filters=32, filter_size=(5, 5),
-            nonlinearity=lasagne.nonlinearities.sigmoid)
+            nonlinearity=lasagne.nonlinearities.rectify,
+            #nonlinearity=lasagne.nonlinearities.sigmoid
+            )
     network = lasagne.layers.MaxPool2DLayer(network, pool_size=(2, 2))
 
     # A fully-connected layer of 256 units with 50% dropout on its inputs:
     network = lasagne.layers.DenseLayer(
             lasagne.layers.dropout(network, p=.5),
             num_units=256,
-            nonlinearity=lasagne.nonlinearities.sigmoid)
+            #nonlinearity=lasagne.nonlinearities.sigmoid
+            nonlinearity=lasagne.nonlinearities.rectify,
+            )
 
     # And, finally, the 10-unit output layer with 50% dropout on its inputs:
     network = lasagne.layers.DenseLayer(
@@ -171,7 +164,8 @@ def main(model='mlp', num_epochs=500):
             # lasagne.layers.set_all_param_values(network, param_values)
     weightsOfParams = lasagne.layers.get_all_param_values(network)
     #np.save("../data/mnist_clutter_CNN_params_sigmoid.npy", weightsOfParams)
-    np.save("../data/mnist_CNN_params_sigmoid.npy", weightsOfParams)
+    #np.save("../data/mnist_CNN_params_sigmoid.npy", weightsOfParams)
+    np.save("../data/mnist_CNN_params.npy", weightsOfParams)
 
 
 

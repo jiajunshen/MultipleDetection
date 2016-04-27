@@ -1,3 +1,6 @@
+# This file is used to build a gaussian/bernoulli mixture model based on the features encoded by the first four layers (conv2d + pool2d + conv2d + pool2d).
+
+# After a gaussian/bernoulli mixture model is build, we try to use it on a large image as a object detector. We use non-maximal surpression to locate the candidate locations
 import os
 import numpy as np
 import sys
@@ -27,7 +30,8 @@ def createSampleTest(nSample = 1, sampleSize = 40):
 def encoder_extraction():
     inputData = T.tensor4('inputs')
     autoencoderNN = build_cnn(inputData)
-    weightsOfParameters = np.load("../data/mnist_CNN_params_sigmoid.npy")
+    #weightsOfParameters = np.load("../data/mnist_CNN_params_sigmoid.npy")
+    weightsOfParameters = np.load("../data/mnist_CNN_params.npy")
     lasagne.layers.set_all_param_values(autoencoderNN, weightsOfParameters)
     networkOutputLayer = lasagne.layers.get_all_layers(autoencoderNN)[4]
     extractedFeature = lasagne.layers.get_output(networkOutputLayer)
@@ -75,7 +79,7 @@ def main():
     print("train llh model...")
     objectModelLayer = pnet.MixtureClassificationLayer(n_components = 5, min_prob = 0.0001, mixture_type = "gaussian")
     objectModelLayer.train(X_train_feature, y_train)
-     
+    np.save("../data/object_model_rectify_activation_10_class_gaussian.npy", objectModelLayer._models)
     print("object model classification accuracy: ", np.mean(objectModelLayer.extract(X_train_feature) == y_train))
     
     data = createSampleTest(nSample = 1)
