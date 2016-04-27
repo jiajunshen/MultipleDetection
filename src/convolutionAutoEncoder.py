@@ -118,7 +118,7 @@ def main(num_epochs = 30):
     
     decoder_params = lasagne.layers.get_all_params(network, trainable = True)[4:]
     updates = lasagne.updates.nesterov_momentum(
-        cost, decoder_params, learning_rate = 0.03, momentum = 0.9)
+        cost, decoder_params, learning_rate = 0.1, momentum = 0.95)
 
     reconstructed_test = lasagne.layers.get_output(network, deterministic=True)
     #reconstructed_test_loss = T.mean(-T.sum(target_var * T.log(reconstructed_test) + (1 - target_var) * T.log(1 - reconstructed_test), axis = 1))
