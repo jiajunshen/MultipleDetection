@@ -53,36 +53,37 @@ def main():
     params = lasagne.layers.get_all_params(network, trainable=True)
     print(params)
     #updates = lasagne.updates.nesterov_momentum(
-    #        loss, params, learning_rate=0.0001, momentum=0.9)
+    #        loss_mean, params, learning_rate=0.001, momentum=0.9)
     gparams = T.grad(loss_mean, params)
 
 
     updates = [
-        (param, param - 0.0001 * gparam)
+        (param, param - 0.1 * gparam)
         for param, gparam in zip(params, gparams)
      ]
 
-    train_fn = theano.function([input_var, target_var], [loss_mean,] + [update for update in gparams], updates=updates)
+    train_fn = theano.function([input_var, target_var], loss_mean, updates=updates)
     X_train_zero = np.array(X_train[y_train == 0], dtype = np.float32)
     y_train_zero = np.array(y_train[y_train == 0], dtype = np.float32)
 
-    for epoch in range(50):
+    for epoch in range(2):
         train_err = 0
         batch_index = 0
         for batch in iterate_minibatches(X_train_zero, y_train_zero, 100, 10, shuffle=True):
             inputs, targets = batch
             current_result = train_fn(inputs, targets)
-            train_err += current_result[0]
-            if (batch_index % 50 == 0):
-                print("-------------")
-                print(current_result[0])
-                print(np.sum(np.asarray(current_result[1])))
-                print(np.sum(np.asarray(current_result[2])))
-                print("-------------")
+            train_err += current_result
+            print("-------------")
+            print(current_result)
+            print(np.mean(lasagne.layers.get_all_param_values(network)[2][0]))
+            print("-------------")
             batch_index += 1
         print(train_err)
+
     learnedWeights = lasagne.layers.get_all_param_values(network)
-    np.save("../data/gaussianDigits.npy", learnedWeights) 
+    import amitgroup.plot as gr
+    gr.images(lasagne.layers.get_all_param_values(network)[0][0].reshape(5,28,28))
+    #np.save("../data/gaussianDigits.npy", learnedWeights) 
 
 if __name__ == "__main__":
     main()
