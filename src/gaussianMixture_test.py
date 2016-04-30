@@ -7,8 +7,10 @@ import time
 import theano
 import theano.tensor as T
 import lasagne
-from lasagne.layers.dnn import Conv2DDNNLayer as Conv2DLayer
-from lasagne.layers.dnn import MaxPool2DDNNLayer as MaxPool2DLayer
+#from lasagne.layers.dnn import Conv2DDNNLayer as Conv2DLayer
+#from lasagne.layers.dnn import MaxPool2DDNNLayer as MaxPool2DLayer
+from lasagne.layers import Conv2DLayer as Conv2DLayer
+from lasagne.layers import MaxPool2DLayer as MaxPool2DLayer
 
 
 def build_cnn(input_var=None, input_label=None):
@@ -45,13 +47,14 @@ def build_cnn(input_var=None, input_label=None):
 
     # A fully-connected layer of 256 units with 50% dropout on its inputs:
     network = lasagne.layers.DenseLayer(
-            lasagne.layers.dropout(network, p=.5),
+            network,
+            #lasagne.layers.dropout(network, p=.5),
             num_units=256,
             #nonlinearity=lasagne.nonlinearities.sigmoid
             nonlinearity=lasagne.nonlinearities.rectify,
             )
     network = lasagne.layers.ConcatLayer(
-            [labelInput, network], axis = 1)
+            [network, labelInput], axis = 1)
     # And, finally, the 10-unit output layer with 50% dropout on its inputs:
     #network = lasagne.layers.DenseLayer(
     #        lasagne.layers.dropout(network, p=.5),
@@ -62,7 +65,8 @@ def build_cnn(input_var=None, input_label=None):
 
 
 
-def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
+def iterate_minibatches(inputs, targets, batchsize, classNum = 10, shuffle=False):
+    targets = np.array(targets, dtype = np.int32)
     assert len(inputs) == len(targets)
     if shuffle:
         indices = np.arange(len(inputs))
@@ -72,7 +76,9 @@ def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
             excerpt = indices[start_idx:start_idx + batchsize]
         else:
             excerpt = slice(start_idx, start_idx + batchsize)
-        yield inputs[excerpt], targets[excerpt]
+        binary_targets = np.zeros((batchsize, classNum))
+        binary_targets[np.arange(batchsize),targets[excerpt]] = 1
+        yield inputs[excerpt], np.array(binary_targets,dtype = np.float32)
 
 
 def main(model='mlp', num_epochs=500):
@@ -84,11 +90,15 @@ def main(model='mlp', num_epochs=500):
     print("Loading data...")
     
     X_train, y_train, X_test, y_test = load_data("/X_train.npy", "/Y_train.npy", "/X_test.npy", "/Y_test.npy")
+    X_train = np.array(X_train, dtype = np.float32)
+    y_train = np.array(y_train, dtype = np.float32)
+    X_test = np.array(X_test, dtype = np.float32)
+    y_test = np.array(y_test, dtype = np.float32)
     #X_train, y_train, X_test, y_test = load_data("/cluttered_train_x.npy", "/cluttered_train_y.npy", "/cluttered_test_x.npy", "/cluttered_test_y.npy", dataset = "MNIST_CLUTTER")
 
     # Prepare Theano variables for inputs and targets
-    input_var = T.tensor4('inputs')
-    target_var = T.matrix('targets')
+    input_var = T.ftensor4('inputs')
+    target_var = T.fmatrix('targets')
 
     # Create neural network model (depending on first command line parameter)
 
@@ -104,9 +114,17 @@ def main(model='mlp', num_epochs=500):
     # parameters at each training step. Here, we'll use Stochastic Gradient
     # Descent (SGD) with Nesterov momentum, but Lasagne offers plenty more.
     params = lasagne.layers.get_all_params(network, trainable=True)
+    print(params)
     print("model built")
-    updates = lasagne.updates.nesterov_momentum(
-            loss, params, learning_rate=0.1, momentum=0.9)
+    #updates = lasagne.updates.nesterov_momentum(
+    #        loss, params, learning_rate=0.0001, momentum=0.9)
+    gparams = T.grad(loss, params)
+
+
+    updates = [
+        (param, param - 1 * gparam)
+        for param, gparam in zip(params, gparams)
+     ] 
 
     # Create a loss expression for validation/testing. The crucial difference
     # here is that we do a deterministic forward pass through the network,
@@ -117,10 +135,10 @@ def main(model='mlp', num_epochs=500):
 
     # Compile a function performing a training step on a mini-batch (by giving
     # the updates dictionary) and returning the corresponding training loss:
-    train_fn = theano.function([input_var, target_var], loss, updates=updates)
+    train_fn = theano.function([input_var, target_var], [loss,] + [update for update in gparams], updates=updates)
 
     # Compile a second function computing the validation loss and accuracy:
-    val_fn = theano.function([input_var, target_var], [test_loss])
+    val_fn = theano.function([input_var, target_var], test_loss)
 
     # Finally, launch the training loop.
     print("Starting training...")
@@ -130,29 +148,35 @@ def main(model='mlp', num_epochs=500):
         train_err = 0
         train_batches = 0
         start_time = time.time()
-        for batch in iterate_minibatches(X_train, y_train, 20, shuffle=True):
+        batchIndex = 0
+        for batch in iterate_minibatches(X_train, y_train, 50, 10, shuffle=True):
             inputs, targets = batch
-            train_err += train_fn(inputs, targets)
+            current_result = train_fn(inputs, targets)
+            if batchIndex % 1 == 0:
+                print(current_result[0])
+            batchIndex = batchIndex + 1
+            train_err += current_result[0]            
             train_batches += 1
-
+            
 
         # Then we print the results for this epoch:
         print("Epoch {} of {} took {:.3f}s".format(
             epoch + 1, num_epochs, time.time() - start_time))
         print("  training loss:\t\t{:.6f}".format(train_err / train_batches))
-
-        if epoch % 5 == 0: 
+        #print(lasagne.layers.get_all_param_values(network)[-3])
+        print("--")
+        if epoch % 5 == 6: 
             # After training, we compute and print the test error:
             test_err = 0
-            test_acc = 0
             test_batches = 0
-            for batch in iterate_minibatches(X_test, y_test, 20, shuffle=False):
+            for batch in iterate_minibatches(X_test, y_test, 50, 10, shuffle=False):
                 inputs, targets = batch
                 err = val_fn(inputs, targets)
                 test_err += err
                 test_batches += 1
             print("Final results:")
             print("  test loss:\t\t\t{:.6f}".format(test_err / test_batches))
+        
 
             # Optionally, you could now dump the network weights to a file like this:
             # np.savez('model.npz', *lasagne.layers.get_all_param_values(network))
