@@ -12,6 +12,7 @@ from lasagne.layers.dnn import MaxPool2DDNNLayer as MaxPool2DLayer
 from CNNForMnist import load_data
 from convolutionAutoEncoder import build_autoencoder
 
+
 ## Decode after two layers
 
 def build_decoder(input_var = None):
