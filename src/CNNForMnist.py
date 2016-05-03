@@ -26,7 +26,7 @@ def build_cnn(input_var=None):
             network, num_filters=32, filter_size=(5, 5),
             #nonlinearity=lasagne.nonlinearities.sigmoid,
             nonlinearity=lasagne.nonlinearities.rectify,
-            W=lasagne.init.GlorotUniform())
+            W=lasagne.init.GlorotUniform(), b = None)
     # Expert note: Lasagne provides alternative convolutional layers that
     # override Theano's choice of which implementation to use; for details
     # please see http://lasagne.readthedocs.org/en/latest/user/tutorial.html.
@@ -38,6 +38,7 @@ def build_cnn(input_var=None):
     network = Conv2DLayer(
             network, num_filters=32, filter_size=(5, 5),
             nonlinearity=lasagne.nonlinearities.rectify,
+            W = lasagne.init.GlorotUniform(), b = None
             #nonlinearity=lasagne.nonlinearities.sigmoid
             )
     network = lasagne.layers.MaxPool2DLayer(network, pool_size=(2, 2))
@@ -46,6 +47,7 @@ def build_cnn(input_var=None):
     network = lasagne.layers.DenseLayer(
             lasagne.layers.dropout(network, p=.5),
             num_units=256,
+            b = None,
             #nonlinearity=lasagne.nonlinearities.sigmoid
             nonlinearity=lasagne.nonlinearities.rectify,
             )
@@ -100,7 +102,7 @@ def main(model='mlp', num_epochs=500):
     # Descent (SGD) with Nesterov momentum, but Lasagne offers plenty more.
     params = lasagne.layers.get_all_params(network, trainable=True)
     updates = lasagne.updates.nesterov_momentum(
-            loss, params, learning_rate=0.1, momentum=0.9)
+            loss, params, learning_rate=0.01, momentum=0.9)
 
     # Create a loss expression for validation/testing. The crucial difference
     # here is that we do a deterministic forward pass through the network,
@@ -123,7 +125,7 @@ def main(model='mlp', num_epochs=500):
     # Finally, launch the training loop.
     print("Starting training...")
     # We iterate over epochs:
-    for epoch in range(50):
+    for epoch in range(30):
         # In each epoch, we do a full pass over the training data:
         train_err = 0
         train_batches = 0
@@ -165,7 +167,8 @@ def main(model='mlp', num_epochs=500):
     weightsOfParams = lasagne.layers.get_all_param_values(network)
     #np.save("../data/mnist_clutter_CNN_params_sigmoid.npy", weightsOfParams)
     #np.save("../data/mnist_CNN_params_sigmoid.npy", weightsOfParams)
-    np.save("../data/mnist_CNN_params.npy", weightsOfParams)
+    #np.save("../data/mnist_CNN_params.npy", weightsOfParams)
+    np.save("../data/mnist_CNN_params_no_bias.npy", weightsOfParams)
 
 
 
