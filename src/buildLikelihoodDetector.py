@@ -33,7 +33,7 @@ def encoder_extraction():
     #weightsOfParameters = np.load("../data/mnist_CNN_params_sigmoid.npy")
     weightsOfParameters = np.load("../data/mnist_CNN_params.npy")
     lasagne.layers.set_all_param_values(autoencoderNN, weightsOfParameters)
-    networkOutputLayer = lasagne.layers.get_all_layers(autoencoderNN)[4]
+    networkOutputLayer = lasagne.layers.get_all_layers(autoencoderNN)[5]
     extractedFeature = lasagne.layers.get_output(networkOutputLayer)
     return theano.function([inputData], extractedFeature)
     
@@ -77,9 +77,9 @@ def main():
     X_test_feature = extract(X_test, extract_function)
     
     print("train llh model...")
-    objectModelLayer = pnet.MixtureClassificationLayer(n_components = 5, min_prob = 0.0001, mixture_type = "gaussian")
+    objectModelLayer = pnet.MixtureClassificationLayer(n_components = 5, min_prob = 0.00001, mixture_type = "gaussian")
     objectModelLayer.train(X_train_feature, y_train)
-    np.save("../data/object_model_rectify_activation_10_class_gaussian.npy", objectModelLayer._models)
+    np.save("../data/object_model_rectify_activation_10_class_gaussian_fc.npy", objectModelLayer._models)
     print("object model classification accuracy: ", np.mean(objectModelLayer.extract(X_train_feature) == y_train))
     
     data = createSampleTest(nSample = 1)
