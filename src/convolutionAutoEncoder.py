@@ -34,6 +34,7 @@ def build_autoencoder(input_var=None):
     network = Conv2DLayer(
             network, num_filters=32, filter_size=(5, 5),
             nonlinearity=lasagne.nonlinearities.rectify,
+            W = lasagne.init.GlorotUniform()
             #nonlinearity = lasagne.nonlinearities.sigmoid
             )
 
@@ -44,6 +45,7 @@ def build_autoencoder(input_var=None):
             #lasagne.layers.dropout(network, p=.5),
             network,
             num_units=256,
+            #nonlinearity = None
             nonlinearity=lasagne.nonlinearities.rectify,
             #nonlinearity = lasagne.nonlinearities.sigmoid
             )
@@ -51,9 +53,11 @@ def build_autoencoder(input_var=None):
     network = lasagne.layers.DenseLayer(
             network,
             num_units=512,
-#            nonlinearity=lasagne.nonlinearities.rectify,
-#            nonlinearity = lasagne.nonlinearities.sigmoid,
+            #b = None,
             nonlinearity = None)
+            #nonlinearity=lasagne.nonlinearities.rectify)
+#            nonlinearity = lasagne.nonlinearities.sigmoid,
+    #        nonlinearity = None)
 
     network = lasagne.layers.ReshapeLayer(
             network,
@@ -65,7 +69,9 @@ def build_autoencoder(input_var=None):
     network = Conv2DLayer(
             network, num_filters = 32, filter_size = 5, pad = 'full',
 #            nonlinearity = lasagne.nonlinearities.sigmoid,
-            nonlinearity = None)
+            nonlinearity = None,
+            #b = None
+            )
     
     network = lasagne.layers.Upscale2DLayer(
             network,
@@ -74,7 +80,8 @@ def build_autoencoder(input_var=None):
     network = Conv2DLayer(
             network, num_filters = 1, filter_size = 5, pad = 'full',
 #            nonlinearity = lasagne.nonlinearities.sigmoid,
-            nonlinearity = None)
+            nonlinearity = None, #b = None
+            )
 
     network = lasagne.layers.ReshapeLayer(
             network, shape = (([0], -1)))
@@ -95,7 +102,7 @@ def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
 
 
 
-def main(num_epochs = 30):
+def main(num_epochs = 50):
     # We fix the encoder in this experiment
     print ("loading data...")
     X_train, y_train, X_test, y_test = load_data("/X_train.npy", "/Y_train.npy", "/X_test.npy", "/Y_test.npy")
@@ -117,8 +124,11 @@ def main(num_epochs = 30):
     cost = T.mean(L)
     
     decoder_params = lasagne.layers.get_all_params(network, trainable = True)[4:]
+    print(decoder_params)
     updates = lasagne.updates.nesterov_momentum(
-        cost, decoder_params, learning_rate = 0.1, momentum = 0.95)
+        cost, decoder_params, learning_rate = 0.01, momentum = 0.9)
+    #gparams = T.grad(cost, decoder_params)
+    #updates = [(param, param - 0.1 * gparam) for param, gparam in zip(decoder_params, gparams)]
 
     reconstructed_test = lasagne.layers.get_output(network, deterministic=True)
     #reconstructed_test_loss = T.mean(-T.sum(target_var * T.log(reconstructed_test) + (1 - target_var) * T.log(1 - reconstructed_test), axis = 1))
@@ -134,14 +144,17 @@ def main(num_epochs = 30):
     #encoder_weights = np.load("../data/mnist_clutter_CNN_params_sigmoid.npy")
     #encoder_weights = np.load("../data/mnist_CNN_params_sigmoid.npy")
     encoder_weights = np.load("../data/mnist_CNN_params.npy")
+
+    #Try to get the first four layers of [conv, pool, conv, pool]
     encoder_model = lasagne.layers.get_all_layers(network)[4]
     # The learned weights also contains the parameters for the softmax layer. Need to crop that out.
+    #Set that equals to 2 since there is no bias; If there is bias, it should be 4
     lasagne.layers.set_all_param_values(encoder_model, encoder_weights[:4])
 
 
     print("Starting training...")
     # We iterate over epochs:
-    for epoch in range(20):
+    for epoch in range(50):
         # In each epoch, we do a full pass over the training data:
         train_err = 0
         train_batches = 0
@@ -172,7 +185,7 @@ def main(num_epochs = 30):
     weightsOfParams = lasagne.layers.get_all_param_values(network)
     #np.save("../data/mnist_clutter_autoencoder_params_sigmoid.npy", weightsOfParams) 
     #np.save("../data/mnist_autoencoder_params_sigmoid.npy", weightsOfParams) 
-    np.save("../data/mnist_autoencoder_params_encoder_linear_decoder.npy", weightsOfParams) 
+    np.save("../data/mnist_autoencoder_params_encoder_linear_decoder_no_bias.npy", weightsOfParams) 
 
 if __name__ == '__main__':
     main() 
