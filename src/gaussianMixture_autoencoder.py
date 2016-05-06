@@ -117,7 +117,7 @@ def main():
 
     gaussian_output, encoder_output, decoder_output = build_cnn(input_var, target_var)
     
-    weightsOfParams = np.load("../data/mnist_autoencoder_params_encoder_linear_decoder.npy")
+    #weightsOfParams = np.load("../data/mnist_autoencoder_params_encoder_linear_decoder.npy")
     #lasagne.layers.set_all_param_values(fc, weightsOfParams[:4]) 
 
     # Create a loss expression for training, i.e., a scalar objective we want
@@ -140,15 +140,19 @@ def main():
     #params = list(set(lasagne.layers.get_all_params(decoder_output, trainable=True) + lasagne.layers.get_all_params(gaussian_output, trainable=True)))
     params = lasagne.layers.get_all_params(decoder_output, trainable=True)
     gaussianMixtureParameters = lasagne.layers.get_all_params(gaussian_output, trainable = True)
+    gaussianParam = []
     for param in gaussianMixtureParameters:
         if param not in params:
-            params.append(param)
+            gaussianParam.append(param)
     print(params)
     print("model built")
     updates = lasagne.updates.nesterov_momentum(
-            loss_mean_burn, params, learning_rate=0.1, momentum=0.9)
-    gparams = T.grad(loss_mean_burn, params)
-
+            loss_mean_2, params, learning_rate=0.1, momentum=0.9)
+    gparams = T.grad(loss_mean_1, gaussianParam)
+    print(gaussianParam)
+    for param, gparam in zip(gaussianParam, gparams):
+        updates[param] = param - 0.001 * gparam
+    print(updates)
     #0.000001
     # updates = [(param, param - 0.0000001 * gparam)
     #     for param, gparam in zip(params[:4], gparams[:4])] + [(params[4], params[4] - 0.01 * gparams[4])]
@@ -185,10 +189,10 @@ def main():
     print("Starting training...")
     # We iterate over epochs:
 
-    loss_combination = -11 
+    loss_combination = 0
     num_epochs = 2000
     for epoch in range(num_epochs):
-        loss_combination = loss_combination + 0.02
+        #loss_combination = loss_combination + 0.02
         # In each epoch, we do a full pass over the training data:
         train_err = 0
         train_reconstruction_err = 0
