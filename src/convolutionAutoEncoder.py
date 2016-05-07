@@ -54,8 +54,8 @@ def build_autoencoder(input_var=None):
             network,
             num_units=512,
             #b = None,
-            nonlinearity = None)
-            #nonlinearity=lasagne.nonlinearities.rectify)
+            #nonlinearity = None)
+            nonlinearity=lasagne.nonlinearities.rectify)
 #            nonlinearity = lasagne.nonlinearities.sigmoid,
     #        nonlinearity = None)
 
@@ -70,7 +70,7 @@ def build_autoencoder(input_var=None):
             network, num_filters = 32, filter_size = 5, pad = 'full',
 #            nonlinearity = lasagne.nonlinearities.sigmoid,
             nonlinearity = None,
-            #b = None
+            b = None
             )
     
     network = lasagne.layers.Upscale2DLayer(
@@ -80,7 +80,7 @@ def build_autoencoder(input_var=None):
     network = Conv2DLayer(
             network, num_filters = 1, filter_size = 5, pad = 'full',
 #            nonlinearity = lasagne.nonlinearities.sigmoid,
-            nonlinearity = None, #b = None
+            nonlinearity = None, b = None
             )
 
     network = lasagne.layers.ReshapeLayer(
@@ -123,12 +123,12 @@ def main(num_epochs = 50):
     #L = -T.mean(target_var * T.log(reconstructed_train) + (1 - target_var) * T.log(1 - reconstructed_train), axis=1)
     cost = T.mean(L)
     
-    decoder_params = lasagne.layers.get_all_params(network, trainable = True)[4:]
+    decoder_params = lasagne.layers.get_all_params(network, trainable = True)
     print(decoder_params)
-    updates = lasagne.updates.nesterov_momentum(
-        cost, decoder_params, learning_rate = 0.01, momentum = 0.9)
-    #gparams = T.grad(cost, decoder_params)
-    #updates = [(param, param - 0.1 * gparam) for param, gparam in zip(decoder_params, gparams)]
+    #updates = lasagne.updates.nesterov_momentum(
+    #    cost, decoder_params, learning_rate = 0.1, momentum = 0.9)
+    gparams = T.grad(cost, decoder_params)
+    updates = [(param, param - 0.03 * gparam) for param, gparam in zip(decoder_params, gparams)]
 
     reconstructed_test = lasagne.layers.get_output(network, deterministic=True)
     #reconstructed_test_loss = T.mean(-T.sum(target_var * T.log(reconstructed_test) + (1 - target_var) * T.log(1 - reconstructed_test), axis = 1))
@@ -143,13 +143,13 @@ def main(num_epochs = 50):
     # We fix the encoder in this experiment
     #encoder_weights = np.load("../data/mnist_clutter_CNN_params_sigmoid.npy")
     #encoder_weights = np.load("../data/mnist_CNN_params_sigmoid.npy")
-    encoder_weights = np.load("../data/mnist_CNN_params.npy")
+    #encoder_weights = np.load("../data/mnist_CNN_params.npy")
 
     #Try to get the first four layers of [conv, pool, conv, pool]
-    encoder_model = lasagne.layers.get_all_layers(network)[4]
+    #encoder_model = lasagne.layers.get_all_layers(network)[4]
     # The learned weights also contains the parameters for the softmax layer. Need to crop that out.
     #Set that equals to 2 since there is no bias; If there is bias, it should be 4
-    lasagne.layers.set_all_param_values(encoder_model, encoder_weights[:4])
+    #lasagne.layers.set_all_param_values(encoder_model, encoder_weights[:4])
 
 
     print("Starting training...")
