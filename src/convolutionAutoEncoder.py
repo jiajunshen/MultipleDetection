@@ -51,6 +51,7 @@ def build_autoencoder(input_var=None):
             )
 
     network = lasagne.layers.DenseLayer(
+            #lasagne.layers.dropout(network, p=.5),
             network,
             num_units=512,
             #b = None,
@@ -123,12 +124,12 @@ def main(num_epochs = 50):
     #L = -T.mean(target_var * T.log(reconstructed_train) + (1 - target_var) * T.log(1 - reconstructed_train), axis=1)
     cost = T.mean(L)
     
-    decoder_params = lasagne.layers.get_all_params(network, trainable = True)
+    decoder_params = lasagne.layers.get_all_params(network, trainable = True)[6:]
     print(decoder_params)
-    #updates = lasagne.updates.nesterov_momentum(
-    #    cost, decoder_params, learning_rate = 0.1, momentum = 0.9)
-    gparams = T.grad(cost, decoder_params)
-    updates = [(param, param - 0.03 * gparam) for param, gparam in zip(decoder_params, gparams)]
+    updates = lasagne.updates.nesterov_momentum(
+        cost, decoder_params, learning_rate = 0.01, momentum = 0.9)
+    #gparams = T.grad(cost, decoder_params)
+    #updates = [(param, param - 0.01 * gparam) for param, gparam in zip(decoder_params, gparams)]
 
     reconstructed_test = lasagne.layers.get_output(network, deterministic=True)
     #reconstructed_test_loss = T.mean(-T.sum(target_var * T.log(reconstructed_test) + (1 - target_var) * T.log(1 - reconstructed_test), axis = 1))
@@ -144,17 +145,18 @@ def main(num_epochs = 50):
     #encoder_weights = np.load("../data/mnist_clutter_CNN_params_sigmoid.npy")
     #encoder_weights = np.load("../data/mnist_CNN_params_sigmoid.npy")
     #encoder_weights = np.load("../data/mnist_CNN_params.npy")
-
+    encoder_weights = np.load("../data/mnist_CNN_params_drop_out.npy")
     #Try to get the first four layers of [conv, pool, conv, pool]
-    #encoder_model = lasagne.layers.get_all_layers(network)[4]
+    encoder_model = lasagne.layers.get_all_layers(network)[5]
+    print(lasagne.layers.get_all_layers(network))
     # The learned weights also contains the parameters for the softmax layer. Need to crop that out.
     #Set that equals to 2 since there is no bias; If there is bias, it should be 4
-    #lasagne.layers.set_all_param_values(encoder_model, encoder_weights[:4])
+    lasagne.layers.set_all_param_values(encoder_model, encoder_weights[:6])
 
 
     print("Starting training...")
     # We iterate over epochs:
-    for epoch in range(50):
+    for epoch in range(10):
         # In each epoch, we do a full pass over the training data:
         train_err = 0
         train_batches = 0

@@ -11,6 +11,7 @@ import lasagne
 from lasagne.layers.dnn import Conv2DDNNLayer as Conv2DLayer
 from lasagne.layers.dnn import MaxPool2DDNNLayer as MaxPool2DLayer
 from CNNForMnist import build_cnn, load_data
+from convolutionAutoEncoder import build_autoencoder
 import pnet
 import amitgroup.plot as gr
 
@@ -27,13 +28,15 @@ def createSampleTest(nSample = 1, sampleSize = 40):
     
 
 
-def encoder_extraction():
+def encoder_extraction(extraction_layer = 5, weights_file = "../data/mnist_CNN_params_drop_out.npy"):
     inputData = T.tensor4('inputs')
-    autoencoderNN = build_cnn(inputData)
+    #autoencoderNN = build_cnn(inputData)
+    autoencoderNN = build_autoencoder(inputData)
     #weightsOfParameters = np.load("../data/mnist_CNN_params_sigmoid.npy")
-    weightsOfParameters = np.load("../data/mnist_CNN_params.npy")
+    #weightsOfParameters = np.load("../data/mnist_CNN_params.npy")
+    weightsOfParameters = np.load(weights_file)
     lasagne.layers.set_all_param_values(autoencoderNN, weightsOfParameters)
-    networkOutputLayer = lasagne.layers.get_all_layers(autoencoderNN)[5]
+    networkOutputLayer = lasagne.layers.get_all_layers(autoencoderNN)[extraction_layer]
     extractedFeature = lasagne.layers.get_output(networkOutputLayer)
     return theano.function([inputData], extractedFeature)
     
@@ -72,7 +75,7 @@ def main():
     X_train, y_train, X_test, y_test = load_data("/X_train.npy", "/Y_train.npy", "/X_test.npy", "/Y_test.npy")
     print("bulding function...")
     extract_function = encoder_extraction()
-    print("faeture extraction...")
+    print("feature extraction...")
     X_train_feature = extract(X_train, extract_function)
     X_test_feature = extract(X_test, extract_function)
     
