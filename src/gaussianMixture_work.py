@@ -63,7 +63,7 @@ def build_cnn(input_var=None, input_label=None):
     #        num_units=10,
     #        nonlinearity=lasagne.nonlinearities.softmax)
     
-    gaussian_output = lasagne.layers.MultiGaussianMixture(network_output, num_components = 5, n_classes = 10, sigma=lasagne.init.Constant(1))
+    gaussian_output = lasagne.layers.MultiGaussianMixture(network_output, num_components = 5, n_classes = 10, sigma=lasagne.init.Constant(-1))
     return gaussian_output, network_output
 
 
@@ -102,7 +102,8 @@ def main():
 
     network, fc = build_cnn(input_var, target_var)
     
-    weightsOfParams = np.load("../data/mnist_autoencoder_params_encoder_linear_decoder.npy")
+    #weightsOfParams = np.load("../data/mnist_autoencoder_params_encoder_linear_decoder.npy")
+    weightsOfParams = np.load("../data/mnist_CNN_params_drop_out.npy")
     lasagne.layers.set_all_param_values(fc, weightsOfParams[:4]) 
 
     # Create a loss expression for training, i.e., a scalar objective we want
@@ -110,17 +111,17 @@ def main():
     llh_output = lasagne.layers.get_output(network)
     loss = lasagne.objectives.multi_negative_llh(llh_output, target_var)
     fc_output = lasagne.layers.get_output(fc)
-    loss_mean = loss.mean()
+    loss_mean = loss.mean() - 720
     # We could add some weight decay as well here, see lasagne.regularization.
 
     # Create update expressions for training, i.e., how to modify the
     # parameters at each training step. Here, we'll use Stochastic Gradient
     # Descent (SGD) with Nesterov momentum, but Lasagne offers plenty more.
-    params = lasagne.layers.get_all_params(network, trainable=True)[4:]
+    params = lasagne.layers.get_all_params(network, trainable=True)
     print(params)
     print("model built")
-    #updates = lasagne.updates.nesterov_momentum(
-    #        loss, params, learning_rate=0.0001, momentum=0.9)
+    updates = lasagne.updates.nesterov_momentum(
+            loss_mean, params, learning_rate=0.01, momentum=0.95)
     gparams = T.grad(loss_mean, params)
 
     #0.000001
@@ -130,7 +131,7 @@ def main():
 
     #updates = [(param, param - 0.0000001 * gparam)
     #    for param, gparam in zip(params[:4], gparams[:4])] + [(params[4], params[4] - 0.01 * gparams[4])]
-    updates = [(param, param - 0.05 * gparam) for param, gparam in zip(params, gparams)]
+    #updates = [(param, param - 0.01 * gparam) for param, gparam in zip(params, gparams)]
     # Create a loss expression for validation/testing. The crucial difference
     # here is that we do a deterministic forward pass through the network,
     # disabling dropout layers.
@@ -152,7 +153,7 @@ def main():
 
     print("Starting training...")
     # We iterate over epochs:
-    num_epochs = 2000
+    num_epochs = 20000
     for epoch in range(num_epochs):
         # In each epoch, we do a full pass over the training data:
         train_err = 0
@@ -178,7 +179,8 @@ def main():
             print("Epoch {} of {} took {:.3f}s".format(
                 epoch + 1, num_epochs, time.time() - start_time))
             print("  training loss:\t\t{:.6f}".format(train_err / train_batches))
-            #print(lasagne.layers.get_all_param_values(network)[-3])
+            print(lasagne.layers.get_all_param_values(network)[-3])
+            print(lasagne.layers.get_all_param_values(network)[-2])
             print("--")
         
             # After training, we compute and print the test error:

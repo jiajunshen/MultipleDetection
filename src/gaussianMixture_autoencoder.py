@@ -146,12 +146,17 @@ def main():
             gaussianParam.append(param)
     print(params)
     print("model built")
-    updates = lasagne.updates.nesterov_momentum(
-            loss_mean_2, params, learning_rate=0.1, momentum=0.9)
-    gparams = T.grad(loss_mean_1, gaussianParam)
-    print(gaussianParam)
-    for param, gparam in zip(gaussianParam, gparams):
-        updates[param] = param - 0.001 * gparam
+    #updates = lasagne.updates.nesterov_momentum(
+    #        loss_mean_2, params, learning_rate=0.1, momentum=0.9)
+    gparams = T.grad(loss_mean_burn, params + gaussianParam)
+    print(gparams)
+    updates = []
+
+    for param, gparam in zip(params + gaussianParam, gparams):
+        if param in params:
+            updates.append((param, param - 0.0001 * gparam))
+        elif param in gaussianParam:
+            updates.append((param,  param - 0.01 * gparam))
     print(updates)
     #0.000001
     # updates = [(param, param - 0.0000001 * gparam)

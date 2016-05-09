@@ -128,7 +128,7 @@ def main():
     #     for param, gparam in zip(params[:4], gparams[:4])] + [(params[4], params[4] - 0.01 * gparams[4])]
 
 
-    updates = [(param, param - 0.001 * gparam)
+    updates = [(param, param - 0.01 * gparam)
         for param, gparam in zip(params[:4], gparams[:4])] + [(params[4], params[4] - 0.01 * gparams[4])]
     #updates = [(param, param - 0.05 * gparam) for param, gparam in zip(params, gparams)]
     # Create a loss expression for validation/testing. The crucial difference
