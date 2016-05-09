@@ -71,32 +71,61 @@ def nonMaximalSupress(llh, windowSize = 5):
             
 
 def main():
+    current_model = "load"
+
     print("load data...")
     X_train, y_train, X_test, y_test = load_data("/X_train.npy", "/Y_train.npy", "/X_test.npy", "/Y_test.npy")
     print("bulding function...")
-    extract_function = encoder_extraction()
+    extract_function = encoder_extraction(extraction_layer = 6, weights_file = "../data/mnist_autoencoder_params_encoder_linear_decoder_no_bias.npy")
     print("feature extraction...")
     X_train_feature = extract(X_train, extract_function)
     X_test_feature = extract(X_test, extract_function)
     
     print("train llh model...")
     objectModelLayer = pnet.MixtureClassificationLayer(n_components = 5, min_prob = 0.00001, mixture_type = "gaussian")
-    objectModelLayer.train(X_train_feature, y_train)
-    np.save("../data/object_model_rectify_activation_10_class_gaussian_fc.npy", objectModelLayer._models)
-    print("object model classification accuracy: ", np.mean(objectModelLayer.extract(X_train_feature) == y_train))
-    
-    data = createSampleTest(nSample = 1)
-    gr.images(data[0])
-    processedData = reprocess_data_for_extraction(data)
-    processedData_reshape = processedData.reshape(-1, 1, 28, 28)
-    processedData_reshape_feature = extract_function(np.array(processedData_reshape,dtype = np.float32))
-    llh_for_data = objectModelLayer.score(processedData_reshape_feature).reshape(processedData.shape[:3] + (10, ))
-    print llh_for_data.shape
-    print(np.max(llh_for_data, axis = -1))
-    print(np.argmax(llh_for_data, axis = -1))
-    print(np.argmax(llh_for_data, axis = -1)[nonMaximalSupress(np.max(llh_for_data, axis = -1), windowSize = 5) != INT_MIN])
-    print (y_train[:1]) 
+    if current_model == "train":
+        objectModelLayer.train(X_train_feature, y_train)
+        np.save("../data/object_model_rectify_activation_10_class_gaussian_fc.npy", objectModelLayer._models)
 
+        print("object model classification accuracy: ", np.mean(objectModelLayer.extract(X_train_feature) == y_train))
+        
+        data = createSampleTest(nSample = 1)
+        gr.images(data[0])
+        processedData = reprocess_data_for_extraction(data)
+        processedData_reshape = processedData.reshape(-1, 1, 28, 28)
+        processedData_reshape_feature = extract_function(np.array(processedData_reshape,dtype = np.float32))
+        llh_for_data = objectModelLayer.score(processedData_reshape_feature).reshape(processedData.shape[:3] + (10, ))
+        print llh_for_data.shape
+        print(np.max(llh_for_data, axis = -1))
+        print(np.argmax(llh_for_data, axis = -1))
+        print(np.argmax(llh_for_data, axis = -1)[nonMaximalSupress(np.max(llh_for_data, axis = -1), windowSize = 5) != INT_MIN])
+        print (y_train[:1]) 
+    else:
+        model_means = np.load("../data/reconstructModel_mean.npy")
+        model_sigmas = np.load("../data/reconstructModel_sigma.npy")
+        model_weights = np.load("../data/reconstructModel_weights.npy")
+        objectModelLayer._modelinstance = []
+        for i in range(10):
+            from sklearn.mixture import GMM
+            mm = GMM(n_components = 5, n_iter = 20, n_init = 1, random_state = 0, covariance_type = 'full')
+            mm.covars_ = model_sigmas[i]
+            mm.means_ = model_means[i].reshape(5, -1)
+            mm.weights_ = model_weights[i]
+            objectModelLayer._modelinstance.append(mm)
+        objectModelLayer._models = model_means
+        print("calculating classification accuracy...")
+        print("object model classification accuracy: ", np.mean(objectModelLayer.extract(X_train.reshape(X_train.shape[0], -1)) == y_train))
+        
+        data = createSampleTest(nSample = 1)
+        gr.images(data[0])
+        processedData = reprocess_data_for_extraction(data)
+        processedData_reshape = processedData.reshape(-1, 784)
+        llh_for_data = objectModelLayer.score(processedData_reshape)#.reshape(processedData.shape[:3] + (10, ))
+        print llh_for_data.shape
+        #print(np.max(llh_for_data, axis = -1))
+        #print(np.argmax(llh_for_data, axis = -1))
+        #print(np.argmax(llh_for_data, axis = -1)[nonMaximalSupress(np.max(llh_for_data, axis = -1), windowSize = 5) != INT_MIN])
+        #print (y_train[:1]) 
 
 
 if __name__ == "__main__":
