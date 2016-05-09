@@ -26,7 +26,7 @@ def build_cnn(input_var=None):
             network, num_filters=32, filter_size=(5, 5),
             #nonlinearity=lasagne.nonlinearities.sigmoid,
             nonlinearity=lasagne.nonlinearities.rectify,
-            W=lasagne.init.GlorotUniform(), b = None)
+            W=lasagne.init.GlorotUniform())
     # Expert note: Lasagne provides alternative convolutional layers that
     # override Theano's choice of which implementation to use; for details
     # please see http://lasagne.readthedocs.org/en/latest/user/tutorial.html.
@@ -38,7 +38,7 @@ def build_cnn(input_var=None):
     network = Conv2DLayer(
             network, num_filters=32, filter_size=(5, 5),
             nonlinearity=lasagne.nonlinearities.rectify,
-            W = lasagne.init.GlorotUniform(), b = None
+            W = lasagne.init.GlorotUniform()
             #nonlinearity=lasagne.nonlinearities.sigmoid
             )
     network = lasagne.layers.MaxPool2DLayer(network, pool_size=(2, 2))
@@ -46,8 +46,8 @@ def build_cnn(input_var=None):
     # A fully-connected layer of 256 units with 50% dropout on its inputs:
     network = lasagne.layers.DenseLayer(
             lasagne.layers.dropout(network, p=.5),
+            #network,
             num_units=256,
-            b = None,
             #nonlinearity=lasagne.nonlinearities.sigmoid
             nonlinearity=lasagne.nonlinearities.rectify,
             )
@@ -55,6 +55,7 @@ def build_cnn(input_var=None):
     # And, finally, the 10-unit output layer with 50% dropout on its inputs:
     network = lasagne.layers.DenseLayer(
             lasagne.layers.dropout(network, p=.5),
+            #network,
             num_units=10,
             nonlinearity=lasagne.nonlinearities.softmax)
 
@@ -168,7 +169,8 @@ def main(model='mlp', num_epochs=500):
     #np.save("../data/mnist_clutter_CNN_params_sigmoid.npy", weightsOfParams)
     #np.save("../data/mnist_CNN_params_sigmoid.npy", weightsOfParams)
     #np.save("../data/mnist_CNN_params.npy", weightsOfParams)
-    np.save("../data/mnist_CNN_params_no_bias.npy", weightsOfParams)
+    np.save("../data/mnist_CNN_params_drop_out.npy", weightsOfParams)
+    #np.save("../data/mnist_CNN_params_For_No_Bias_experiment_out.npy", weightsOfParams)
 
 
 
