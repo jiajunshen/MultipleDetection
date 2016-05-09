@@ -27,7 +27,37 @@ def multiplyDiagonal(leftMatrix, diagonalMatrix):
 
 def load_conv_weights(weightsFile):
     weightsOfParameters = np.load(weightsFile)[8:]
-    return weightsOfParameters
+    return weightsOfParameters[0], weightsOfParameters[1]
+
+
+def build_test_decoder(input_var = None):
+    network = lasagne.layers.InputLayer(shape=(None, 512), input_var = input_var)
+    network = lasagne.layers.ReshapeLayer(network, shape = (([0], 32, 4, 4)))
+    network = lasagne.layers.Upscale2DLayer(network, 2)
+    network = Conv2DLayer(network, num_filters = 32, filter_size = 5, pad = 'full', b = None, nonlinearity = None)
+    network = lasagne.layers.Upscale2DLayer(network, 2)
+    network = Conv2DLayer(network, num_filters = 1, filter_size = 5, pad = 'full', b = None, nonlinearity = None)
+    network = lasagne.layers.ReshapeLayer(network, shape = (([0], -1)))
+    return network
+
+def test_equal(input_value, compareResult, weight_value = None):
+    input_var = T.fmatrix('input variable')
+    decoder = build_test_decoder(input_var)
+    if len(lasagne.layers.get_all_params(decoder)) > 0:
+        print(len(weight_value))
+        lasagne.layers.set_all_param_values(decoder, weight_value)
+    networkOutput = lasagne.layers.get_output(decoder, input_var)
+    outputFunction = theano.function([input_var], networkOutput)
+    expectedValue = outputFunction(input_value)
+    print(expectedValue)
+    print("===========")
+    print(compareResult)
+    print np.sum((expectedValue.reshape(expectedValue.shape[0], -1) - compareResult.reshape(compareResult.shape[0], -1)) ** 2)
+    model_mean = expectedValue.reshape(10, 5, 28, 28)
+    plt.figure(figsize = (10,20))
+    plt.imshow(model_mean[0, 0], cmap = plt.cm.gray, interpolation='nearest')
+    plt.savefig("./png/generatedGaussianModel_test.png")
+    
 
 def main():
     
@@ -37,15 +67,17 @@ def main():
 
     extract_function = encoder_extraction(extraction_layer = 6, weights_file = "../data/mnist_autoencoder_params_encoder_linear_decoder_no_bias.npy")
 
-    print("faeture extraction...")
+    print("feature extraction...")
     X_train_feature = extract(X_train, extract_function)
     X_test_feature = extract(X_test, extract_function)
    
     print("train llh model...")
     objectModelLayer = pnet.MixtureClassificationLayer(n_components = 5, min_prob = 0.0001, mixture_type = "gaussian")
-    objectModelLayer.train(X_train_feature, y_train)
-    np.save("../data/object_model_rectify_activation_10_class_gaussian_no_bias.npy", objectModelLayer._modelinstance)
-    i#objectModelLayer._modelinstance = np.load("")
+    #objectModelLayer.train(X_train_feature, y_train)
+    #np.save("../data/object_model_rectify_activation_10_class_gaussian_no_bias.npy", objectModelLayer._modelinstance)
+    objectModelLayer._modelinstance = np.load("../data/object_model_rectify_activation_10_class_gaussian_no_bias.npy")
+
+    #objectModelLayer._modelinstance = np.load("")
     print("object model classification accuracy: ", np.mean(objectModelLayer.extract(X_train_feature) == y_train))
     # Shape of the model: (N_y, N_c, N_p)
     gaussianModel = objectModelLayer._modelinstance
@@ -54,14 +86,13 @@ def main():
 
     conv1, conv2 = load_conv_weights("../data/mnist_autoencoder_params_encoder_linear_decoder_no_bias.npy") 
 
-
     upscaleMatrix1 = upscaleMatrix(featureShape = (32, 4, 4), stride = (2, 2))
-    
-    
-    convMatrix1 = findMatrix(conv1, originalSize = 8)
+    convMatrix1 = findMatrix(conv1, originalSize = 8, flip_filters = False)
+
+
     upscaleMatrix2 = upscaleMatrix(featureShape = (32, 12, 12), stride = (2, 2))
-    convMatrix2 = findMatrix(conv2, originalSize= 24)
-   
+    convMatrix2 = findMatrix(conv2, originalSize= 24, flip_filters = False)
+    
     #model_mean = np.dot(gaussianMeans, fc1)
     #model_sigma = np.dot(np.dot(np.transpose(fc1), gaussianCovars), fc1)
     #model_mean = np.dot(model_mean, fc2)
@@ -76,28 +107,42 @@ def main():
 
     covars[:, :, 0] = np.sqrt(gaussianCovars)
 
-    model_mean = np.dot(gaussianMeans, np.transpose(upscaleMatrix1))
+    gaussianMeans = gaussianMeans.reshape(-1, gaussianMeans.shape[-1])
+    
+    model_mean = np.array([np.dot(upscaleMatrix1, gaussianMeans[i]) for i in range(gaussianMeans.shape[0])])
     model_sigma = np.array([np.dot(upscaleMatrix1, covar) for covar in covars])
     print(model_mean.shape, model_sigma.shape)
 
-    model_mean = np.dot(model_mean, np.transpose(convMatrix1))
+    #test_equal(np.array(gaussianMeans, dtype = np.float32), np.array(model_mean, dtype = np.float32), weight_value = [conv1])
+
+
+    model_mean = np.array([np.dot(convMatrix1, model_mean[i]) for i in range(model_mean.shape[0])])
     model_sigma = np.array([np.dot(convMatrix1, covar) for covar in model_sigma])
     print(model_mean.shape, model_sigma.shape)
     
-    model_mean = np.dot(model_mean, np.transpose(upscaleMatrix2))
+    #test_equal(np.array(gaussianMeans, dtype = np.float32), np.array(model_mean, dtype = np.float32), [conv1])
+    
+    model_mean = np.array([np.dot(upscaleMatrix2, model_mean[i]) for i in range(model_mean.shape[0])])
     model_sigma = np.array([np.dot(upscaleMatrix2, covar) for covar in model_sigma])
     print(model_mean.shape, model_sigma.shape)
+    
+    #test_equal(np.array(gaussianMeans, dtype = np.float32), np.array(model_mean, dtype = np.float32), [conv1])
 
 
 
-    model_mean = np.dot(model_mean, np.transpose(convMatrix2))
+    model_mean = np.array([np.dot(convMatrix2, model_mean[i]) for i in range(model_mean.shape[0])])
     model_sigma = np.array([np.dot(convMatrix2, covar) for covar in model_sigma])
     print(model_mean.shape, model_sigma.shape)
     print(model_mean.shape)
+    
 
+    test_equal(np.array(gaussianMeans, dtype = np.float32), np.array(model_mean, dtype = np.float32), weight_value = [conv1, conv2])
+    
     result_object = []
+    
+    model_mean = model_mean.reshape(10, 5, 28, 28)
     for i in range(10):
-        object_images = model_mean[i].reshape(5, 28, 28)
+        object_images = model_mean[i]
         object_images = np.hstack(object_images)
         result_object.append(object_images)
     
