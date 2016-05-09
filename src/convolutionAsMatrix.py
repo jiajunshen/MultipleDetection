@@ -12,10 +12,13 @@ import theano
 # Find matrix of dimension  576 x 784 (1024 x 784) T, so that X_f = T %*% X'
 # Remember here: the filter flip is important as the default setting for filters in lasagne is flipped
 
-def findMatrix(convfilter, convolutionType = "full", originalSize = 28, flip_filters = True):
+def findMatrix(convfilter_input, convolutionType = "full", originalSize = 28, flip_filters = True):
+
+    convfilter = np.zeros(convfilter_input.shape)
+
     if flip_filters:
-        convfilter[:,:,:,:] = convfilter[:,:,:,::-1]
-        convfilter[:,:,:,:] = convfilter[:,:,::-1,:]    
+        convfilter[:,:,:,:] = convfilter_input[:,:,:,::-1]
+        convfilter[:,:,:,:] = convfilter_input[:,:,::-1,:]    
 
     numOfFilters, numOfChannels, filterSize = convfilter.shape[:3]
 
