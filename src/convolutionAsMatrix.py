@@ -14,11 +14,11 @@ import theano
 
 def findMatrix(convfilter_input, convolutionType = "full", originalSize = 28, flip_filters = True):
 
-    convfilter = np.zeros(convfilter_input.shape)
+    convfilter = np.array(convfilter_input)
 
     if flip_filters:
-        convfilter[:,:,:,:] = convfilter_input[:,:,:,::-1]
-        convfilter[:,:,:,:] = convfilter_input[:,:,::-1,:]    
+        convfilter[:,:,:,:] = convfilter[:,:,:,::-1]
+        convfilter[:,:,:,:] = convfilter[:,:,::-1,:]    
 
     numOfFilters, numOfChannels, filterSize = convfilter.shape[:3]
 
@@ -89,7 +89,7 @@ def test_upscale(data, stride = (2,2)):
     return output_function(originalData)
 
 if __name__ == "__main__":
-    test_type = "upscale"
+    test_type = "conv"
 
     #testFilter = np.array(np.zeros((1,1,2,2)), dtype = np.float32)
     #testFilter[0,0,0,0] = 1
