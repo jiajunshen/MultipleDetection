@@ -81,7 +81,8 @@ def build_autoencoder(input_var=None):
     network = Conv2DLayer(
             network, num_filters = 1, filter_size = 5, pad = 'full',
 #            nonlinearity = lasagne.nonlinearities.sigmoid,
-            nonlinearity = None, b = None
+            #nonlinearity = None, 
+            b = None
             )
 
     network = lasagne.layers.ReshapeLayer(
@@ -127,7 +128,7 @@ def main(num_epochs = 50):
     decoder_params = lasagne.layers.get_all_params(network, trainable = True)[6:]
     print(decoder_params)
     updates = lasagne.updates.nesterov_momentum(
-        cost, decoder_params, learning_rate = 0.01, momentum = 0.9)
+        cost, decoder_params, learning_rate = 0.03, momentum = 0.95)
     #gparams = T.grad(cost, decoder_params)
     #updates = [(param, param - 0.01 * gparam) for param, gparam in zip(decoder_params, gparams)]
 
@@ -156,7 +157,7 @@ def main(num_epochs = 50):
 
     print("Starting training...")
     # We iterate over epochs:
-    for epoch in range(10):
+    for epoch in range(30):
         # In each epoch, we do a full pass over the training data:
         train_err = 0
         train_batches = 0
@@ -187,7 +188,8 @@ def main(num_epochs = 50):
     weightsOfParams = lasagne.layers.get_all_param_values(network)
     #np.save("../data/mnist_clutter_autoencoder_params_sigmoid.npy", weightsOfParams) 
     #np.save("../data/mnist_autoencoder_params_sigmoid.npy", weightsOfParams) 
-    np.save("../data/mnist_autoencoder_params_encoder_linear_decoder_no_bias.npy", weightsOfParams) 
+    #np.save("../data/mnist_autoencoder_params_encoder_linear_decoder_no_bias.npy", weightsOfParams) 
+    np.save("../data/mnist_autoencoder_params_encoder_linear_decoder_no_bias_one_rectify.npy", weightsOfParams) 
 
 if __name__ == '__main__':
     main() 
