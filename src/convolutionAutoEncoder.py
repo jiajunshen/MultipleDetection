@@ -153,7 +153,7 @@ def main(num_epochs = 50):
     # The learned weights also contains the parameters for the softmax layer. Need to crop that out.
     #Set that equals to 2 since there is no bias; If there is bias, it should be 4
     lasagne.layers.set_all_param_values(encoder_model, encoder_weights[:6])
-
+    
 
     print("Starting training...")
     # We iterate over epochs:
