@@ -60,13 +60,13 @@ def main():
     lasagne.layers.set_all_param_values(cnnMnist, weightsOfParameters)
     print("extracting all the hypercolumns...")
     
-    train_hypercolumn = extract_hypercolumn_batch(cnnMnist, [1, 3], X_train[:10000])    
-    test_hypercolumn = extract_hypercolumn_batch(cnnMnist, [1, 3]) 
+    train_hypercolumn = extract_hypercolumn_batch(cnnMnist, [1, 3], X_train[:2000])    
+    test_hypercolumn = extract_hypercolumn_batch(cnnMnist, [1, 3], X_test) 
     print(train_hypercolumn.shape) 
     gr.images(test_hypercolumn[0], vmin = None, vmax = None, cmap = None, colorbar = True, fileName = "./png/testhypercolumn.png") 
     print("training GMM for the hypercolumns...")
-    objectModelLayer = pnet.MixtureClassificationLayer(n_components = 5, min_prob = 0.0001, mixture_type = "gaussian")
-    objectModelLayer.train(train_hypercolumn, y_train[:10000])
+    objectModelLayer = pnet.HyperMixtureClassificationLayer(n_components = 5, min_prob = 0.0001, mixture_type = "gaussian")
+    objectModelLayer.train(train_hypercolumn, y_train[:2000])
     print("finish training...")
 
     print("object model classification accuracy: ", np.mean(objectModelLayer.extract(test_hypercolumn) == y_test))
