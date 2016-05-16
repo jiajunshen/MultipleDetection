@@ -71,7 +71,7 @@ def nonMaximalSupress(llh, windowSize = 5):
             
 
 def main():
-    current_model = "load"
+    current_model = "train"
 
     print("load data...")
     X_train, y_train, X_test, y_test = load_data("/X_train.npy", "/Y_train.npy", "/X_test.npy", "/Y_test.npy")
@@ -87,7 +87,7 @@ def main():
         objectModelLayer.train(X_train_feature, y_train)
         np.save("../data/object_model_rectify_activation_10_class_gaussian_fc.npy", objectModelLayer._models)
 
-        print("object model classification accuracy: ", np.mean(objectModelLayer.extract(X_train_feature) == y_train))
+        print("object model classification accuracy: ", np.mean(objectModelLayer.extract(X_test_feature) == y_test))
         
         data = createSampleTest(nSample = 1)
         gr.images(data[0])
