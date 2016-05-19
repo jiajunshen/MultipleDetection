@@ -63,8 +63,9 @@ def build_cnn(input_var=None, input_label=None):
     #        num_units=10,
     #        nonlinearity=lasagne.nonlinearities.softmax)
     
-    gaussian_output = lasagne.layers.MultiGaussianMixture(network_output, num_components = 5, n_classes = 10, sigma=lasagne.init.Constant(-1))
-    return gaussian_output, network_output
+    gaussian_output = lasagne.layers.MultiGaussianMixtureScore(network_output, num_components = 5, n_classes = 10, sigma=lasagne.init.Constant(-1))
+    gaussian_output_1 = lasagne.layers.MultiGaussianMixture(network_output, num_components = 5, n_classes = 10, sigma=lasagne.init.Constant(-1))
+    return gaussian_output, gaussian_output_1
 
 
 
@@ -98,62 +99,34 @@ def main():
     input_var = T.ftensor4('inputs')
     target_var = T.fmatrix('targets')
 
-    # Create neural network model (depending on first command line parameter)
 
     network, fc = build_cnn(input_var, target_var)
-    
-    #weightsOfParams = np.load("../data/mnist_autoencoder_params_encoder_linear_decoder.npy")
-    weightsOfParams = np.load("../data/mnist_CNN_params_drop_out.npy")
-    lasagne.layers.set_all_param_values(fc, weightsOfParams[:4]) 
-
+    llh_output_3, llh_output_2, llh_output = lasagne.layers.get_output(network)
+    llh_output_1 = lasagne.layers.get_output(fc)
+    loss = lasagne.objectives.multi_negative_llh(llh_output, target_var)
+    loss_mean = loss.mean()
     # Create a loss expression for training, i.e., a scalar objective we want
     # to minimize (for our multi-class problem, it is the cross-entropy loss):
-    llh_output = lasagne.layers.get_output(network)
-    loss = lasagne.objectives.multi_negative_llh(llh_output, target_var)
-    fc_output = lasagne.layers.get_output(fc)
-    loss_mean = loss.mean() - 720
-    # We could add some weight decay as well here, see lasagne.regularization.
 
-    # Create update expressions for training, i.e., how to modify the
-    # parameters at each training step. Here, we'll use Stochastic Gradient
-    # Descent (SGD) with Nesterov momentum, but Lasagne offers plenty more.
     params = lasagne.layers.get_all_params(network, trainable=True)
     print(params)
     print("model built")
     updates = lasagne.updates.nesterov_momentum(
-            loss_mean, params, learning_rate=0.01, momentum=0.95)
+            loss_mean, params, learning_rate = 0.00001, momentum = 0.95)
     gparams = T.grad(loss_mean, params)
 
-    #0.000001
-    # updates = [(param, param - 0.0000001 * gparam)
-    #     for param, gparam in zip(params[:4], gparams[:4])] + [(params[4], params[4] - 0.01 * gparams[4])]
-
-
-    #updates = [(param, param - 0.0000001 * gparam)
-    #    for param, gparam in zip(params[:4], gparams[:4])] + [(params[4], params[4] - 0.01 * gparams[4])]
-    #updates = [(param, param - 0.01 * gparam) for param, gparam in zip(params, gparams)]
-    # Create a loss expression for validation/testing. The crucial difference
-    # here is that we do a deterministic forward pass through the network,
-    # disabling dropout layers.
-    test_llh_output = lasagne.layers.get_output(network, deterministic=True)
-    test_loss = lasagne.objectives.multi_negative_llh(test_llh_output, target_var)
+    test_output_1, test_output_2, test_output  = lasagne.layers.get_output(network, deterministic=True)
+    test_loss = lasagne.objectives.multi_negative_llh(test_output, target_var)
     test_loss_mean = test_loss.mean()
-    # As a bonus, also create an expression for the classification accuracy:
 
-    # Compile a function performing a training step on a mini-batch (by giving
-    # the updates dictionary) and returning the corresponding training loss:
-    # + [update_param for update_param in gparams]
-    train_fn = theano.function([input_var, target_var], [loss_mean, llh_output, fc_output,], updates=updates)
+    train_fn = theano.function([input_var, target_var], [loss_mean, llh_output, llh_output_2, llh_output_3], updates = updates)
 
-    # Compile a second function computing the validation loss and accuracy:
-    val_fn = theano.function([input_var, target_var], [test_loss_mean, llh_output])
-
-    # Finally, launch the training loop.
+    val_fn = theano.function([input_var, target_var], [test_loss_mean, test_output_2])
 
 
     print("Starting training...")
     # We iterate over epochs:
-    num_epochs = 20000
+    num_epochs = 1
     for epoch in range(num_epochs):
         # In each epoch, we do a full pass over the training data:
         train_err = 0
@@ -164,24 +137,33 @@ def main():
             inputs, targets = batch
             #current_loss_mean, current_loss, fc_output = train_fn(inputs, targets)
             current_result = train_fn(inputs, targets)
+            print(current_result[1])
+            print("================")
+            print(current_result[2])
+            print("================")
+            print(current_result[3])
+            print("================")
 
     #         if batchIndex % 2000 == 0:
     #             print(current_result)
             batchIndex = batchIndex + 1
             train_err += current_result[0]
             train_batches += 1
-            break
+            if train_batches == 3:
+                break
 
-
-        if epoch % 100 == 0: 
+        if epoch % 10 == 0: 
             
                 # Then we print the results for this epoch:
             print("Epoch {} of {} took {:.3f}s".format(
                 epoch + 1, num_epochs, time.time() - start_time))
             print("  training loss:\t\t{:.6f}".format(train_err / train_batches))
+            print("---")
             print(lasagne.layers.get_all_param_values(network)[-3])
+            print("---")
             print(lasagne.layers.get_all_param_values(network)[-2])
-            print("--")
+            print("---")
+            print(lasagne.layers.get_all_param_values(network)[-1])
         
             # After training, we compute and print the test error:
             test_err = 0
@@ -200,17 +182,8 @@ def main():
 
 
             # Optionally, you could now dump the network weights to a file like this:
-            # np.savez('model.npz', *lasagne.layers.get_all_param_values(network))
-            #
-            # And load them again later on like this:
-            # with np.load('model.npz') as f:
-            #     param_values = [f['arr_%d' % i] for i in range(len(f.files))]
-            # lasagne.layers.set_all_param_values(network, param_values)
-    # weightsOfParams = lasagne.layers.get_all_param_values(network)
-    # #np.save("../data/mnist_clutter_CNN_params_sigmoid.npy", weightsOfParams)
-    # #np.save("../data/mnist_CNN_params_sigmoid.npy", weightsOfParams)
-    # np.save("../data/mnist_CNN_gaussian.npy", weightsOfParams)
 
 
 if __name__ == "__main__":
     main()
+
