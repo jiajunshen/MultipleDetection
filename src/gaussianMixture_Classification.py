@@ -63,7 +63,7 @@ def build_cnn(input_var=None, input_label=None):
     #        num_units=10,
     #        nonlinearity=lasagne.nonlinearities.softmax)
     
-    gaussian_output = lasagne.layers.MultiGaussianMixtureClassification(network_output, num_components = 5, n_classes = 10, sigma=lasagne.init.Constant(1))
+    gaussian_output = lasagne.layers.MultiGaussianMixtureClassification(network_output, num_components = 5, n_classes = 10, sigma=lasagne.init.Constant(0))
     return gaussian_output, network_output
 
 
@@ -114,7 +114,7 @@ def main():
     loss_classification = lasagne.objectives.categorical_crossentropy(classification_output, target_prediction_var)
     loss_classification_mean = loss_classification.mean()
     fc_output = lasagne.layers.get_output(fc)
-    loss_mean = loss_llh_mean + loss_classification_mean
+    loss_mean = loss_llh_mean/1000.0 + loss_classification_mean
     # We could add some weight decay as well here, see lasagne.regularization.
 
     # Create update expressions for training, i.e., how to modify the
@@ -132,9 +132,7 @@ def main():
     #     for param, gparam in zip(params[:4], gparams[:4])] + [(params[4], params[4] - 0.01 * gparams[4])]
 
 
-    updates = [(param, param - 0.01 * gparam)
-        for param, gparam in zip(params[:4], gparams[:4])] + [(params[4], params[4] - 0.01 * gparams[4])]
-    #updates = [(param, param - 0.05 * gparam) for param, gparam in zip(params, gparams)]
+    updates = [(param, param - 0.01 * gparam) for param, gparam in zip(params, gparams)]
     # Create a loss expression for validation/testing. The crucial difference
     # here is that we do a deterministic forward pass through the network,
     # disabling dropout layers.
@@ -143,24 +141,24 @@ def main():
     test_loss_llh_mean = test_loss_llh.mean()
     test_loss_classification = lasagne.objectives.categorical_crossentropy(test_classification_output, target_prediction_var)
     test_loss_classification_mean = test_loss_classification.mean()
-    test_loss_mean = test_loss_llh_mean + test_loss_classification_mean
+    test_loss_mean = test_loss_llh_mean/1000.0 + test_loss_classification_mean
 
     # As a bonus, also create an expression for the classification accuracy:
 
     # Compile a function performing a training step on a mini-batch (by giving
     # the updates dictionary) and returning the corresponding training loss:
     # + [update_param for update_param in gparams]
-    train_fn = theano.function([input_var, target_llh_var, target_prediction_var], [loss_mean, loss_llh_mean, loss_classification_mean, ], updates=updates)
+    train_fn = theano.function([input_var, target_llh_var, target_prediction_var], [loss_mean, loss_llh_mean, loss_classification_mean, classification_output, loss_classification, loss_llh], updates=updates)
 
     # Compile a second function computing the validation loss and accuracy:
-    val_fn = theano.function([input_var, target_llh_var, target_prediction_var], [test_loss_mean, test_loss_llh_mean, test_loss_classification_mean])
+    val_fn = theano.function([input_var, target_llh_var, target_prediction_var], [test_loss_mean, test_llh_output, test_loss_llh_mean, test_loss_classification_mean])
 
     # Finally, launch the training loop.
 
 
     print("Starting training...")
     # We iterate over epochs:
-    num_epochs = 2
+    num_epochs = 10
     for epoch in range(num_epochs):
         # In each epoch, we do a full pass over the training data:
         train_err = 0
@@ -177,10 +175,13 @@ def main():
             batchIndex = batchIndex + 1
             train_err += current_result[0]
             train_batches += 1
-            if 1:
-                print(current_result[0], current_result[1], current_result[2])
+            if train_batches % 1000 == 0:
+                #print(current_result[0], current_result[1], current_result[2])
+                print("============")
+                print(current_result[1])
+                print(current_result[2])
         print("===========================")
-        if epoch % 100 != -1: 
+        if epoch % 2 == 0: 
             
                 # Then we print the results for this epoch:
             print("Epoch {} of {} took {:.3f}s".format(
@@ -199,9 +200,9 @@ def main():
                 err = valuationResult[0]
                 test_err += err
                 test_batches += 1
-                accurate += np.sum(np.argmax(targets, axis = 1) == np.argmax(valuationResult[1], axis = 1))
-                if 1:
-                    print(current_result[0], current_result[1], current_result[2])
+                accurate += np.sum(targets_prediction == np.argmax(valuationResult[1], axis = 1))
+                if 0:
+                    print(valuationResult[0], valuationResult[2], valuationResult[3], np.argmax(valuationResult[1], axis = 1))
             print("Final results:")
             print("  test loss:\t\t\t{:.6f}".format(test_err / test_batches))
             print("Test Accuracy: ", accurate / 10000.0)
