@@ -45,15 +45,15 @@ def build_cnn(input_var=None, input_label=None):
     network = lasagne.layers.MaxPool2DLayer(network, pool_size=(2, 2))
 
     # A fully-connected layer of 256 units with 50% dropout on its inputs:
-    #network_output = lasagne.layers.DenseLayer(
-    #        network,
+    network = lasagne.layers.DenseLayer(
+            network,
             #lasagne.layers.dropout(network, p=.5),
-    #        num_units=256,
+            num_units=256,
             #nonlinearity=lasagne.nonlinearities.sigmoid
-    #        nonlinearity=lasagne.nonlinearities.rectify,
-    #        )
+            nonlinearity=lasagne.nonlinearities.rectify,
+            )
     
-    network_output = lasagne.layers.reshape(network, shape = ([0], 512))
+    network_output = lasagne.layers.reshape(network, shape = ([0], 256))
     
 #     network = lasagne.layers.ConcatLayer(
 #             [network_output, labelInput], axis = 1)
@@ -114,7 +114,7 @@ def main():
     loss_classification = lasagne.objectives.categorical_crossentropy(classification_output, target_prediction_var)
     loss_classification_mean = loss_classification.mean()
     fc_output = lasagne.layers.get_output(fc)
-    loss_mean = loss_llh_mean/1000.0 + loss_classification_mean
+    loss_mean = loss_llh_mean / 100.0 + loss_classification_mean
     # We could add some weight decay as well here, see lasagne.regularization.
 
     # Create update expressions for training, i.e., how to modify the
@@ -141,7 +141,7 @@ def main():
     test_loss_llh_mean = test_loss_llh.mean()
     test_loss_classification = lasagne.objectives.categorical_crossentropy(test_classification_output, target_prediction_var)
     test_loss_classification_mean = test_loss_classification.mean()
-    test_loss_mean = test_loss_llh_mean/1000.0 + test_loss_classification_mean
+    test_loss_mean = test_loss_llh_mean / 100.0 + test_loss_classification_mean
 
     # As a bonus, also create an expression for the classification accuracy:
 
@@ -158,7 +158,7 @@ def main():
 
     print("Starting training...")
     # We iterate over epochs:
-    num_epochs = 10
+    num_epochs = 20
     for epoch in range(num_epochs):
         # In each epoch, we do a full pass over the training data:
         train_err = 0
@@ -215,7 +215,9 @@ def main():
             # with np.load('model.npz') as f:
             #     param_values = [f['arr_%d' % i] for i in range(len(f.files))]
             # lasagne.layers.set_all_param_values(network, param_values)
-    # weightsOfParams = lasagne.layers.get_all_param_values(network)
+
+    weightsOfParams = lasagne.layers.get_all_param_values(network)
+    np.save("../data/GMM_Classification_1.npy", weightsOfParams)
     # #np.save("../data/mnist_clutter_CNN_params_sigmoid.npy", weightsOfParams)
     # #np.save("../data/mnist_CNN_params_sigmoid.npy", weightsOfParams)
     # np.save("../data/mnist_CNN_gaussian.npy", weightsOfParams)
