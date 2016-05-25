@@ -63,7 +63,7 @@ def build_cnn(input_var=None, input_label=None):
 #            num_units=10,
 #            nonlinearity=lasagne.nonlinearities.softmax)
 
-    network = lasagne.layers.MultiGaussianMixtureScore(network, num_components = 1, n_classes = 10, sigma=lasagne.init.Constant(0))
+    network = lasagne.layers.MultiGaussianMixtureScore(network, num_components = 5, n_classes = 10, sigma=lasagne.init.Constant(0))
     
     #gaussian_output = lasagne.layers.MultiGaussianMixtureScore(network_output, num_components = 5, n_classes = 10, sigma=lasagne.init.Constant(-1))
     #gaussian_output_1 = lasagne.layers.MultiGaussianMixture(network_output, num_components = 5, n_classes = 10, sigma=lasagne.init.Constant(-1))
