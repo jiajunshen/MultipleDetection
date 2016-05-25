@@ -45,7 +45,7 @@ def build_cnn(input_var=None, input_label=None):
     network = lasagne.layers.MaxPool2DLayer(network, pool_size=(2, 2))
 
     # A fully-connected layer of 256 units with 50% dropout on its inputs:
-    #network_output = lasagne.layers.DenseLayer(
+    #network = lasagne.layers.DenseLayer(
     #        network,
             #lasagne.layers.dropout(network, p=.5),
     #        num_units=256,
@@ -53,19 +53,21 @@ def build_cnn(input_var=None, input_label=None):
     #        nonlinearity=lasagne.nonlinearities.rectify,
     #        )
     
-    network_output = lasagne.layers.reshape(network, shape = ([0], 512))
+    network = lasagne.layers.reshape(network, shape = ([0], 512))
     
 #     network = lasagne.layers.ConcatLayer(
 #             [network_output, labelInput], axis = 1)
     # And, finally, the 10-unit output layer with 50% dropout on its inputs:
-    #network = lasagne.layers.DenseLayer(
-    #        lasagne.layers.dropout(network, p=.5),
-    #        num_units=10,
-    #        nonlinearity=lasagne.nonlinearities.softmax)
+#    network = lasagne.layers.DenseLayer(
+#            lasagne.layers.dropout(network_output, p=.5),
+#            num_units=10,
+#            nonlinearity=lasagne.nonlinearities.softmax)
+
+    network = lasagne.layers.MultiGaussianMixtureScore(network, num_components = 1, n_classes = 10, sigma=lasagne.init.Constant(0))
     
-    gaussian_output = lasagne.layers.MultiGaussianMixtureScore(network_output, num_components = 5, n_classes = 10, sigma=lasagne.init.Constant(-1))
-    gaussian_output_1 = lasagne.layers.MultiGaussianMixture(network_output, num_components = 5, n_classes = 10, sigma=lasagne.init.Constant(-1))
-    return gaussian_output, gaussian_output_1
+    #gaussian_output = lasagne.layers.MultiGaussianMixtureScore(network_output, num_components = 5, n_classes = 10, sigma=lasagne.init.Constant(-1))
+    #gaussian_output_1 = lasagne.layers.MultiGaussianMixture(network_output, num_components = 5, n_classes = 10, sigma=lasagne.init.Constant(-1))
+    return network
 
 
 
@@ -100,10 +102,13 @@ def main():
     target_var = T.fmatrix('targets')
 
 
-    network, fc = build_cnn(input_var, target_var)
-    llh_output_3, llh_output_2, llh_output = lasagne.layers.get_output(network)
-    llh_output_1 = lasagne.layers.get_output(fc)
-    loss = lasagne.objectives.multi_negative_llh(llh_output, target_var)
+    network = build_cnn(input_var, target_var)
+
+    #weightsOfParams = np.load("../data/mnist_autoencoder_params_encoder_linear_decoder.npy")
+    #lasagne.layers.set_all_param_values(fc_1, weightsOfParams[:4]) 
+
+    last_layer_output = lasagne.layers.get_output(network)
+    loss = lasagne.objectives.generative_loss(last_layer_output, target_var)
     loss_mean = loss.mean()
     # Create a loss expression for training, i.e., a scalar objective we want
     # to minimize (for our multi-class problem, it is the cross-entropy loss):
@@ -112,21 +117,25 @@ def main():
     print(params)
     print("model built")
     updates = lasagne.updates.nesterov_momentum(
-            loss_mean, params, learning_rate = 0.00001, momentum = 0.95)
+            loss_mean, params, learning_rate = 0.00003, momentum = 0.95)
     gparams = T.grad(loss_mean, params)
 
-    test_output_1, test_output_2, test_output  = lasagne.layers.get_output(network, deterministic=True)
-    test_loss = lasagne.objectives.multi_negative_llh(test_output, target_var)
+    test_output = lasagne.layers.get_output(network, deterministic=True)
+    test_acc = T.mean(T.eq(T.argmax(test_output, axis = 1), T.argmax(target_var, axis = 1)), dtype = theano.config.floatX)
+
+    test_loss = lasagne.objectives.generative_loss(test_output, target_var)
     test_loss_mean = test_loss.mean()
 
-    train_fn = theano.function([input_var, target_var], [loss_mean, llh_output, llh_output_2, llh_output_3], updates = updates)
+    train_fn = theano.function([input_var, target_var], [loss_mean, last_layer_output], updates = updates)
 
-    val_fn = theano.function([input_var, target_var], [test_loss_mean, test_output_2])
-
+    val_fn = theano.function([input_var, target_var], [test_loss_mean, test_acc])
+    print("before training:")
+    print("---")
+    print(lasagne.layers.get_all_param_values(network, trainable = True)[-1])
 
     print("Starting training...")
     # We iterate over epochs:
-    num_epochs = 1
+    num_epochs = 200
     for epoch in range(num_epochs):
         # In each epoch, we do a full pass over the training data:
         train_err = 0
@@ -137,48 +146,54 @@ def main():
             inputs, targets = batch
             #current_loss_mean, current_loss, fc_output = train_fn(inputs, targets)
             current_result = train_fn(inputs, targets)
-            print(current_result[1])
-            print("================")
-            print(current_result[2])
-            print("================")
-            print(current_result[3])
-            print("================")
+            if 0:
+                print(current_result[1])
+                print("================")
+                #print(current_result[2])
+                #print("================")
+                #print(current_result[3])
+                #print("================")
 
     #         if batchIndex % 2000 == 0:
     #             print(current_result)
             batchIndex = batchIndex + 1
             train_err += current_result[0]
             train_batches += 1
-            if train_batches == 3:
+            if train_batches == -1:
                 break
 
-        if epoch % 10 == 0: 
+        if epoch % 1 == 0: 
             
                 # Then we print the results for this epoch:
             print("Epoch {} of {} took {:.3f}s".format(
                 epoch + 1, num_epochs, time.time() - start_time))
             print("  training loss:\t\t{:.6f}".format(train_err / train_batches))
             print("---")
-            print(lasagne.layers.get_all_param_values(network)[-3])
-            print("---")
-            print(lasagne.layers.get_all_param_values(network)[-2])
-            print("---")
-            print(lasagne.layers.get_all_param_values(network)[-1])
+
+            if 1:
+                #print(lasagne.layers.get_all_param_values(network)[-3])
+                #print("---")
+                #print(lasagne.layers.get_all_param_values(network)[-2])
+                print("---")
+                print(lasagne.layers.get_all_param_values(network, trainable = True)[-1])
         
             # After training, we compute and print the test error:
             test_err = 0
             test_batches = 0
             accurate = 0
+
             for batch in iterate_minibatches(X_test, y_test, 50, 10, shuffle=False):
                 inputs, targets = batch
-                valuationResult = val_fn(inputs, targets)
-                err = valuationResult[0]
+                result = val_fn(inputs, targets)
+                err = result[0]
+                acc = result[1]
                 test_err += err
                 test_batches += 1
-                accurate += np.sum(np.argmax(targets, axis = 1) == np.argmax(valuationResult[1], axis = 1))
+                accurate += acc
+
             print("Final results:")
             print("  test loss:\t\t\t{:.6f}".format(test_err / test_batches))
-            print("Test Accuracy: ", accurate / 10000.0)
+            print("  test accuracy:\t\t{:.2f} %".format(accurate / test_batches * 100))
 
 
             # Optionally, you could now dump the network weights to a file like this:
