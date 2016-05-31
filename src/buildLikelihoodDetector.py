@@ -28,16 +28,17 @@ def createSampleTest(nSample = 1, sampleSize = 40):
     
 
 
-def encoder_extraction(extraction_layer = 5, weights_file = "../data/mnist_CNN_params_drop_out.npy"):
+def encoder_extraction(extraction_layer = 6, weights_file = "../data/mnist_CNN_params_drop_out.npy"):
     inputData = T.tensor4('inputs')
-    #autoencoderNN = build_cnn(inputData)
-    autoencoderNN = build_autoencoder(inputData)
+    autoencoderNN = build_cnn(inputData)
+    print(lasagne.layers.get_all_layers(autoencoderNN))
+    #autoencoderNN = build_autoencoder(inputData)
     #weightsOfParameters = np.load("../data/mnist_CNN_params_sigmoid.npy")
     #weightsOfParameters = np.load("../data/mnist_CNN_params.npy")
     weightsOfParameters = np.load(weights_file)
     lasagne.layers.set_all_param_values(autoencoderNN, weightsOfParameters)
     networkOutputLayer = lasagne.layers.get_all_layers(autoencoderNN)[extraction_layer]
-    extractedFeature = lasagne.layers.get_output(networkOutputLayer)
+    extractedFeature = lasagne.layers.get_output(networkOutputLayer, deterministic = True)
     return theano.function([inputData], extractedFeature)
     
 def extract(data, extract_function):
@@ -76,13 +77,16 @@ def main():
     print("load data...")
     X_train, y_train, X_test, y_test = load_data("/X_train.npy", "/Y_train.npy", "/X_test.npy", "/Y_test.npy")
     print("bulding function...")
-    extract_function = encoder_extraction(extraction_layer = 6, weights_file = "../data/mnist_autoencoder_params_encoder_linear_decoder_no_bias.npy")
+    #extract_function = encoder_extraction(extraction_layer = 6, weights_file = "../data/mnist_autoencoder_params_encoder_linear_decoder_no_bias.npy")
+    extract_function = encoder_extraction()
     print("feature extraction...")
     X_train_feature = extract(X_train, extract_function)
     X_test_feature = extract(X_test, extract_function)
+    print(X_train_feature.shape)
+    print(X_test_feature.shape)
     
     print("train llh model...")
-    objectModelLayer = pnet.MixtureClassificationLayer(n_components = 5, min_prob = 0.00001, mixture_type = "gaussian")
+    objectModelLayer = pnet.MixtureClassificationLayer(n_components = 5, min_prob = 0.0001, mixture_type = "gaussian")
     if current_model == "train":
         objectModelLayer.train(X_train_feature, y_train)
         np.save("../data/object_model_rectify_activation_10_class_gaussian_fc.npy", objectModelLayer._models)
