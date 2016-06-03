@@ -216,32 +216,33 @@ class AutoEncoder(object):
             print("|---------------|---------------|---------|----------|")
 
             for step in xrange(FLAGS.pretraining_epochs * num_train):
-              feed_dict = fill_feed_dict_ae(data.train, input_, target_, noise[i])
+                input_data, input_label = mnist.train.next_batch(FLAGS.batch_size)
+                feed_dict = {input_: input_data}
 
-              loss_summary, loss_value = sess.run([train_op, loss],
+                loss_summary, loss_value = sess.run([train_step, loss],
                                                   feed_dict=feed_dict)
 
-              if step % 100 == 0:
-                summary_str = sess.run(summary_op, feed_dict=feed_dict)
-                summary_writer.add_summary(summary_str, step)
-                image_summary_op = \
-                    tf.image_summary("training_images",
-                                     tf.reshape(input_,
-                                                (FLAGS.batch_size,
-                                                 FLAGS.image_size,
-                                                 FLAGS.image_size, 1)),
-                                     max_images=FLAGS.batch_size)
+                if step % 100 == 0:
+                    summary_str = sess.run(summary_op, feed_dict=feed_dict)
+                    summary_writer.add_summary(summary_str, step)
+                    image_summary_op = \
+                        tf.image_summary("training_images",
+                                         tf.reshape(input_,
+                                                    (FLAGS.batch_size,
+                                                     FLAGS.image_size,
+                                                     FLAGS.image_size, 1)),
+                                         max_images=FLAGS.batch_size)
 
-                summary_img_str = sess.run(image_summary_op,
-                                           feed_dict=feed_dict)
-                summary_writer.add_summary(summary_img_str)
+                    summary_img_str = sess.run(image_summary_op,
+                                               feed_dict=feed_dict)
+                    summary_writer.add_summary(summary_img_str)
 
-                output = "| {0:>13} | {1:13.4f} | Layer {2} | Epoch {3}  |"\
-                         .format(step, loss_value, n, step // num_train + 1)
+                    output = "| {0:>13} | {1:13.4f} | Layer {2} | Epoch {3}  |"\
+                             .format(step, loss_value, n, step // num_train + 1)
 
-                print(output)
+                    print(output)
 
-      return ae
+        return ae
 
 
 
