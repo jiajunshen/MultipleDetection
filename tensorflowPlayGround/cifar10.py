@@ -1,4 +1,3 @@
-opyright 2016 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,13 +19,15 @@ from __future__ import division
 from __future__ import print_function
 
 import gzip
-
+import os
 import numpy
+import numpy as np
 from six.moves import xrange  # pylint: disable=redefined-builtin
 
 from tensorflow.contrib.learn.python.learn.datasets import base
 from tensorflow.python.framework import dtypes
 from tensorflow.python.platform import gfile
+import collections
 
 SOURCE_URL = 'http://yann.lecun.com/exdb/mnist/'
 
@@ -96,18 +97,18 @@ class DataSet(object):
 def read_data_sets(train_dir,
                    dtype=dtypes.float32):
  
-    train_images = np.load(train_dir + "cifar10TrainingData.npy") / 255.0
+    train_images = np.load(train_dir + "/cifar10TrainingData.npy").reshape(50000, 3, 32, 32) / 255.0
 
     train_images = np.rollaxis(train_images, 1, 4)
     
 
-    train_labels = np.load(train_dir + "cifar10TrainingDataLabel.npy")
+    train_labels = np.load(train_dir + "/cifar10TrainingDataLabel.npy")
 
-    test_images = np.load(train_dir + "cifar10TestingData.npy") / 255.0
+    test_images = np.load(train_dir + "/cifar10TestingData.npy").reshape(10000, 3, 32, 32) / 255.0
 
     test_images = np.rollaxis(test_images, 1, 4)
     
-    test_labels = np.load(train_dr + "cifar10TestingDataLabel.npy")
+    test_labels = np.load(train_dir + "/cifar10TestingDataLabel.npy")
 
     VALIDATION_SIZE = 5000    
 
@@ -124,8 +125,10 @@ def read_data_sets(train_dir,
     validation = DataSet(validation_images, validation_labels, dtype=dtype)
 
     test = DataSet(test_images, test_labels, dtype=dtype)
-
-    return base.Datasets(train=train, validation=validation, test=test)
+    
+    Datasets = collections.namedtuple('Datasets', ['train', 'validation', 'test'])
+    
+    return Datasets(train=train, validation=validation, test=test)
 
 
 def load_mnist():
