@@ -68,7 +68,7 @@ def upscale2d(x, dimension, scale = 2):
 def createVAE(x, weights, bias, weightsKey, biasKey):
     x_reshape = tf.reshape(x, shape = [-1, 28, 28, 1])
     z_mean, z_log_sigma_sq = encoder_network(x_reshape, weights, bias, weightsKey, biasKey)
-    eps = tf.random_normal((100, 50), 0, 1, dtype = tf.float32)
+    eps = tf.random_normal((100, 10), 0, 1, dtype = tf.float32)
     
     z = tf.add(z_mean, tf.mul(tf.sqrt(tf.exp(z_log_sigma_sq)), eps)) 
 
@@ -114,8 +114,8 @@ def decoder_network(x, weights, bias, weights_key, bias_key):
 
 def main():
     mnist = input_data.read_data_sets('MNIST_data', one_hot = True)
-    learning_rate = 0.0003
-    training_epochs = 20
+    learning_rate = 0.001
+    training_epochs = 100
     batch_size = 100
     n_input = 784
     n_train = mnist.train.num_examples
@@ -126,9 +126,9 @@ def main():
         'encode_conv_weight_1':tf.Variable(tf.random_uniform((3, 3, 1, 16), minval = -boundary, maxval = boundary)),
         'encode_conv_weight_2':tf.Variable(tf.random_uniform((3, 3, 16, 16), minval = -boundary, maxval = boundary)),
         'encode_conv_weight_3':tf.Variable(tf.random_uniform((3, 3, 16, 32), minval = -boundary, maxval = boundary)),
-        'encode_output_mean':tf.Variable(xavier_init(1568, 50)),
-        'encode_output_log_sigma': tf.Variable(xavier_init(1568, 50)),
-        'decode_dense_weight_1':tf.Variable(xavier_init(50, 1568)),
+        'encode_output_mean':tf.Variable(xavier_init(1568, 10)),
+        'encode_output_log_sigma': tf.Variable(xavier_init(1568, 10)),
+        'decode_dense_weight_1':tf.Variable(xavier_init(10, 1568)),
         'decode_conv_weight_3': tf.Variable(tf.random_uniform((3, 3, 32, 16), minval = -boundary, maxval = boundary)),
         'decode_conv_weight_2': tf.Variable(tf.random_uniform((3, 3, 16, 16), minval = -boundary, maxval = boundary)),
         'decode_conv_weight_1': tf.Variable(tf.random_uniform((3, 3, 16, 1), minval = -boundary, maxval = boundary))
@@ -138,8 +138,8 @@ def main():
         'encode_conv_bias_1':tf.Variable(tf.zeros([16])),
         'encode_conv_bias_2':tf.Variable(tf.zeros([16])),
         'encode_conv_bias_3':tf.Variable(tf.zeros([32])),
-        'encode_output_mean':tf.Variable(tf.zeros([50])),
-        'encode_output_log_sigma': tf.Variable(tf.zeros([50])),
+        'encode_output_mean':tf.Variable(tf.zeros([10])),
+        'encode_output_log_sigma': tf.Variable(tf.zeros([10])),
         'decode_dense_bias_1':tf.Variable(tf.zeros([1568])),
         'decode_conv_bias_3': tf.Variable(tf.zeros([16])),
         'decode_conv_bias_2': tf.Variable(tf.zeros([16])),
@@ -189,7 +189,7 @@ def main():
         feed_dict = {x:batch_x}
         sess.run(optimizer, feed_dict = feed_dict)
         
-        if step % 100 == 0:
+        if step % 550 == 0:
             loss_summary = sess.run(recon_loss, feed_dict = feed_dict)
             #loss_summary_op = tf.scalar_summary("reconstruction_error", loss_summary)
             
@@ -226,6 +226,11 @@ def main():
                                     feed_dict = feed_dict)
             summary_writer.add_summary(summary_recon_image_str, step)
         step+=1
+    batch_x, batch_y = mnist.test.next_batch(FLAGS.batch_size)
+    feed_dict = {x: np.array(batch_x)}
+
+    recon_target = sess.run(reconstruction, feed_dict=feed_dict)
+    np.save("conv_vae_mnist_1.npy", recon_target.reshape(100, 28, 28))
 
     print("Optimization Finished!")
 
