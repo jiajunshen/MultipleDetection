@@ -131,5 +131,5 @@ def read_data_sets(train_dir,
     return Datasets(train=train, validation=validation, test=test)
 
 
-def load_mnist():
+def load_cifar10():
   return read_data_sets(os.environ['CIFAR10_DIR'])
