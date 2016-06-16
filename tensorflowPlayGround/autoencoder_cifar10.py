@@ -5,8 +5,9 @@ import tensorflow as tf
 import numpy as np
 import math
 import random
-from flags import FLAGS
+from flags1 import FLAGS
 
+import cifar10 as cifar10
 
 def loss_x_entropy(output, target):
   """Cross entropy loss
@@ -148,9 +149,8 @@ def main_unsupervised():
     ae = AutoEncoder(ae_shape, sess)
 
 
-    from tensorflow.examples.tutorials.mnist import input_data
-    mnist = input_data.read_data_sets('MNIST_data', one_hot=True)
-    num_train = mnist.train.num_examples
+    cifar10_data = cifar10.load_cifar10()
+    num_train = cifar10_data.train.num_examples
 
 
     n = 4
@@ -185,8 +185,8 @@ def main_unsupervised():
         loss_summary_op_train = tf.scalar_summary("reconstruction error", loss)
 
 
-        train_step = tf.train.MomentumOptimizer(learning_rate = 0.01, momentum = 0.9).minimize(loss)
-        #train_step = tf.train.AdamOptimizer(learning_rate = 0.001, beta1 = 0.9, beta2 = 0.999).minimize(loss)
+        #train_step = tf.train.MomentumOptimizer(learning_rate = 0.01, momentum = 0.9).minimize(loss)
+        train_step = tf.train.AdamOptimizer(learning_rate = 0.001, beta1 = 0.9, beta2 = 0.999).minimize(loss)
         sess.run(tf.initialize_all_variables())
 
         print("\n\n")
@@ -194,20 +194,20 @@ def main_unsupervised():
         print("|---------------|------------------------|-----------------------|--------|----------|")
 
         #for step in xrange(FLAGS.pretraining_epochs * num_train):
-        for step in xrange(55000):
-            input_data, input_label = mnist.train.next_batch(FLAGS.batch_size)
+        for step in xrange(45000):
+            input_data, input_label = cifar10_data.train.next_batch(FLAGS.batch_size)
             feed_dict = {input_: np.array(input_data)}
 
             loss_summary, loss_value = sess.run([train_step, loss],
                                               feed_dict=feed_dict)
 
-            if step % 550 == 0:
+            if step % 450 == 0:
                 summary_str = sess.run(summary_op, feed_dict=feed_dict)
                 summary_writer.add_summary(summary_str, step)
 
                 total_test_loss = 0
-                for test_step in xrange(mnist.test.num_examples // FLAGS.batch_size):
-                    input_data, input_label = mnist.train.next_batch(FLAGS.batch_size)
+                for test_step in xrange(cifar10_data.train.num_examples // FLAGS.batch_size):
+                    input_data, input_label = cifar10_data.train.next_batch(FLAGS.batch_size)
                     feed_dict = {input_: np.array(input_data)}
                     test_loss = sess.run(loss, feed_dict = feed_dict)
                     total_test_loss += test_loss * FLAGS.batch_size
@@ -219,23 +219,23 @@ def main_unsupervised():
                 summary_writer.add_summary(summary_scalar_str, step)
                     
                 output = "| {0:>13} | {1:19.4f} | {2:19.4f} |Layer {3} | Epoch {4}  |"\
-                     .format(step, loss_value, total_test_loss / mnist.test.num_examples, n, step * FLAGS.batch_size//num_train + 1)
+                     .format(step, loss_value, total_test_loss / cifar10_data.train.num_examples, n, step * FLAGS.batch_size//num_train + 1)
 
                 print(output)
-            if step % 1100 == 0:
+            if step % 900 == 0:
                 image_summary_op = \
                     tf.image_summary("training_images",
                                  tf.reshape(input_,
                                             (FLAGS.batch_size,
                                              FLAGS.image_size,
-                                             FLAGS.image_size, 1)),
+                                             FLAGS.image_size, 3)),
                                  max_images=FLAGS.batch_size)
                 reconstruction_summary_op = \
                     tf.image_summary("reconstruction_image",
                                 tf.reshape(target_for_loss, 
                                             (FLAGS.batch_size,
                                              FLAGS.image_size,
-                                             FLAGS.image_size, 1)),
+                                             FLAGS.image_size, 3)),
                                  max_images=FLAGS.batch_size)
 
                 summary_img_str = sess.run(image_summary_op,
@@ -246,11 +246,11 @@ def main_unsupervised():
                                         feed_dict = feed_dict)
                 summary_writer.add_summary(summary_recon_image_str, step)
         
-        input_data, input_label = mnist.test.next_batch(FLAGS.batch_size)
+        input_data, input_label = cifar10_data.test.next_batch(FLAGS.batch_size)
         feed_dict = {input_: np.array(input_data)}
 
         recon_target = sess.run(target_for_loss, feed_dict=feed_dict)
-        np.save("autoencoder_mnist_2.npy", recon_target.reshape(100, 28, 28))
+        np.save("autoencoder_cifar10.npy", recon_target.reshape(100, 32, 32, 3))
 
   return ae
 

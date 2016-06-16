@@ -8,7 +8,7 @@ import sys
 import tensorflow as tf
 
 
-IMAGE_PIXELS = 28 * 28
+IMAGE_PIXELS = 32 * 32 * 3
 NUM_CLASSES = 10
 
 
@@ -21,11 +21,11 @@ FLAGS = flags.FLAGS
 # Autoencoder Architecture Specific Flags
 flags.DEFINE_integer("num_hidden_layers", 3, "Number of hidden layers")
 
-flags.DEFINE_integer('hidden1_units', 500,
+flags.DEFINE_integer('hidden1_units', 1024,
                      'Number of units in hidden layer 1.')
-flags.DEFINE_integer('hidden2_units', 2,
+flags.DEFINE_integer('hidden2_units', 500,
                      'Number of units in hidden layer 2.')
-flags.DEFINE_integer('hidden3_units', 500,
+flags.DEFINE_integer('hidden3_units', 1024,
                      'Number of units in hidden layer 3.')
 
 flags.DEFINE_integer('image_pixels', IMAGE_PIXELS, 'Total number of pixels')
@@ -44,7 +44,7 @@ flags.DEFINE_float('noise_3', 0.50, 'Rate at which to set pixels to 0')
 
 # Constants
 flags.DEFINE_integer('seed', 1234, 'Random seed')
-flags.DEFINE_integer('image_size', 28, 'Image square size')
+flags.DEFINE_integer('image_size', 32, 'Image square size')
 
 flags.DEFINE_integer('batch_size', 100,
                      'Batch size. Must divide evenly into the dataset sizes.')
