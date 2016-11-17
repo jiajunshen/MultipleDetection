@@ -116,7 +116,7 @@ def main():
     cifar10_data = cifar10.load_cifar10()
 
     learning_rate = 0.001
-    training_epochs = 100
+    training_epochs = 600
     batch_size = 100
     n_input = 3072
     n_train = cifar10_data.train.num_examples
