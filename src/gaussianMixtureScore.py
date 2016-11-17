@@ -63,7 +63,7 @@ def build_cnn(input_var=None, input_label=None):
 #            num_units=10,
 #            nonlinearity=lasagne.nonlinearities.softmax)
 
-    network = lasagne.layers.MultiGaussianMixtureScore(network, num_components = 5, n_classes = 10, sigma=lasagne.init.Constant(0))
+    network = lasagne.layers.MultiGaussianMixtureScore(network, num_components = 10, n_classes = 10, sigma=lasagne.init.Constant(0))
     
     #gaussian_output = lasagne.layers.MultiGaussianMixtureScore(network_output, num_components = 5, n_classes = 10, sigma=lasagne.init.Constant(-1))
     #gaussian_output_1 = lasagne.layers.MultiGaussianMixture(network_output, num_components = 5, n_classes = 10, sigma=lasagne.init.Constant(-1))
@@ -135,7 +135,7 @@ def main():
 
     print("Starting training...")
     # We iterate over epochs:
-    num_epochs = 200
+    num_epochs = 2000
     for epoch in range(num_epochs):
         # In each epoch, we do a full pass over the training data:
         train_err = 0
@@ -197,6 +197,9 @@ def main():
 
 
             # Optionally, you could now dump the network weights to a file like this:
+
+	weightsOfParams = lasagne.layers.get_all_param_values(network)
+	np.save("../data/gaussianMixtureScoreUnsup.npy", weightsOfParams)
 
 
 if __name__ == "__main__":

@@ -9,7 +9,7 @@ import theano
 import theano.tensor as T
 import lasagne
 import scipy
-import amitgroup.plot as gr
+#import amitgroup.plot as gr
 import pnet
 from lasagne.layers.dnn import Conv2DDNNLayer as Conv2DLayer
 from lasagne.layers.dnn import MaxPool2DDNNLayer as MaxPool2DLayer
@@ -18,7 +18,7 @@ from CNNForMnist import build_cnn
 
 
 def extract_hypercolumn_batch(model, layer_indexes, instance):
-    batch_size = 1000
+    batch_size = 5000
     n_batches = instance.shape[0] // batch_size
     data_feature = []
     for i in range(n_batches):
@@ -60,13 +60,13 @@ def main():
     lasagne.layers.set_all_param_values(cnnMnist, weightsOfParameters)
     print("extracting all the hypercolumns...")
     
-    train_hypercolumn = extract_hypercolumn_batch(cnnMnist, [1, 3], X_train[:2000])    
-    test_hypercolumn = extract_hypercolumn_batch(cnnMnist, [1, 3], X_test) 
+    train_hypercolumn = extract_hypercolumn_batch(cnnMnist, [3], X_train)    
+    test_hypercolumn = extract_hypercolumn_batch(cnnMnist, [3], X_test) 
     print(train_hypercolumn.shape) 
-    gr.images(test_hypercolumn[0], vmin = None, vmax = None, cmap = None, colorbar = True, fileName = "./png/testhypercolumn.png") 
+    #gr.images(test_hypercolumn[0], vmin = None, vmax = None, cmap = None, colorbar = True, fileName = "./png/testhypercolumn.png") 
     print("training GMM for the hypercolumns...")
     objectModelLayer = pnet.HyperMixtureClassificationLayer(n_components = 5, min_prob = 0.0001, mixture_type = "gaussian")
-    objectModelLayer.train(train_hypercolumn, y_train[:2000])
+    objectModelLayer.train(train_hypercolumn, y_train)
     print("finish training...")
 
     print("object model classification accuracy: ", np.mean(objectModelLayer.extract(test_hypercolumn) == y_test))

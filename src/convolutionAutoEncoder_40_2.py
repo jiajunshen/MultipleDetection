@@ -11,7 +11,7 @@ from CNNForMnist import load_data
 
 def build_autoencoder(input_var=None):
     # Input layer, as usual:
-    network = lasagne.layers.InputLayer(shape=(None, 1, 28, 28),
+    network = lasagne.layers.InputLayer(shape=(None, 1, 40, 40),
                                         input_var=input_var)
     # This time we do not apply input dropout, as it tends to work less well
     # for convolutional layers.
@@ -21,8 +21,7 @@ def build_autoencoder(input_var=None):
     network = Conv2DLayer(
             network, num_filters=32, filter_size=(5, 5),
             nonlinearity=lasagne.nonlinearities.rectify,
-            #nonlinearity = lasagne.nonlinearities.sigmoid,
-            W=lasagne.init.GlorotUniform())
+            W=lasagne.init.Uniform(6.0/64))
     # Expert note: Lasagne provides alternative convolutional layers that
     # override Theano's choice of which implementation to use; for details
     # please see http://lasagne.readthedocs.org/en/latest/user/tutorial.html.
@@ -34,8 +33,7 @@ def build_autoencoder(input_var=None):
     network = Conv2DLayer(
             network, num_filters=32, filter_size=(5, 5),
             nonlinearity=lasagne.nonlinearities.rectify,
-            W = lasagne.init.GlorotUniform()
-            #nonlinearity = lasagne.nonlinearities.sigmoid
+            W = lasagne.init.Uniform(6.0/64)
             )
 
     network = lasagne.layers.MaxPool2DLayer(network, pool_size=(2, 2))
@@ -45,33 +43,28 @@ def build_autoencoder(input_var=None):
             #lasagne.layers.dropout(network, p=.5),
             network,
             num_units=256,
-            #nonlinearity = None
             nonlinearity=lasagne.nonlinearities.rectify,
-            #nonlinearity = lasagne.nonlinearities.sigmoid
+            W = lasagne.init.Uniform(6.0/2000)
             )
 
     network = lasagne.layers.DenseLayer(
             #lasagne.layers.dropout(network, p=.5),
             network,
-            num_units=512,
-            #b = None,
-            #nonlinearity = None)
-            nonlinearity=lasagne.nonlinearities.rectify)
-#            nonlinearity = lasagne.nonlinearities.sigmoid,
-    #        nonlinearity = None)
+            num_units=1568,
+            nonlinearity=lasagne.nonlinearities.rectify,
+            W = lasagne.init.Uniform(6.0/2000))
 
     network = lasagne.layers.ReshapeLayer(
             network,
-            shape = (([0], 32, 4, 4)))
+            shape = (([0], 32, 7, 7)))
 
     network = lasagne.layers.Upscale2DLayer(
             network,
             2 )
     network = Conv2DLayer(
             network, num_filters = 32, filter_size = 5, pad = 'full',
-#            nonlinearity = lasagne.nonlinearities.sigmoid,
-            nonlinearity = None,
-            b = None
+            nonlinearity = lasagne.nonlinearities.rectify,
+            W = lasagne.init.Uniform(6.0/64)
             )
     
     network = lasagne.layers.Upscale2DLayer(
@@ -80,15 +73,23 @@ def build_autoencoder(input_var=None):
 
     network = Conv2DLayer(
             network, num_filters = 1, filter_size = 5, pad = 'full',
-#            nonlinearity = lasagne.nonlinearities.sigmoid,
-            #nonlinearity = None, 
-            b = None
+            nonlinearity = lasagne.nonlinearities.sigmoid,
+            W = lasagne.init.Uniform(6.0/32)
             )
 
     network = lasagne.layers.ReshapeLayer(
             network, shape = (([0], -1)))
 
     return network
+
+
+def extend_image(inputs, size = 40):
+    extended_images = np.zeros((inputs.shape[0], 1, size, size), dtype = np.float32)
+    margin_size = (40 - inputs.shape[2]) / 2
+    extended_images[:, :, margin_size:margin_size + inputs.shape[2], margin_size:margin_size + inputs
+.shape[3]] = inputs
+    return extended_images
+
 
 def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
     assert len(inputs) == len(targets)
@@ -109,9 +110,12 @@ def main(num_epochs = 50):
     print ("loading data...")
     X_train, y_train, X_test, y_test = load_data("/X_train.npy", "/Y_train.npy", "/X_test.npy", "/Y_test.npy")
     #X_train, y_train, X_test, y_test = load_data("/cluttered_train_x.npy", "/cluttered_train_y.npy", "/cluttered_test_x.npy", "/cluttered_test_y.npy", dataset = "MNIST_CLUTTER")
+    
+    X_train = extend_image(X_train, 40)
+    X_test = extend_image(X_test, 40)
 
-    height = 28
-    width = 28
+    height = 40
+    width = 40
     
     input_var = T.tensor4('inputs')
     target_var_original = T.tensor4('targets')
@@ -121,14 +125,14 @@ def main(num_epochs = 50):
     network = build_autoencoder(input_var)
     reconstructed_train = lasagne.layers.get_output(network, input_var)
 
-    L = T.mean(lasagne.objectives.squared_error(target_var, reconstructed_train), axis = 1)
-    #L = -T.mean(target_var * T.log(reconstructed_train) + (1 - target_var) * T.log(1 - reconstructed_train), axis=1)
+    #L = T.mean(lasagne.objectives.squared_error(target_var, reconstructed_train), axis = 1)
+    L = -T.mean(target_var * T.log(reconstructed_train) + (1 - target_var) * T.log(1 - reconstructed_train), axis=1)
     cost = T.mean(L)
     
     decoder_params = lasagne.layers.get_all_params(network, trainable = True)[6:]
     print(decoder_params)
     updates = lasagne.updates.nesterov_momentum(
-        cost, decoder_params, learning_rate = 0.03, momentum = 0.95)
+        cost, decoder_params, learning_rate = 0.01, momentum = 0.95)
     #gparams = T.grad(cost, decoder_params)
     #updates = [(param, param - 0.01 * gparam) for param, gparam in zip(decoder_params, gparams)]
 
@@ -139,24 +143,25 @@ def main(num_epochs = 50):
 
     print ("brewing functions....")
     train_fn = theano.function([input_var, target_var_original], cost, updates = updates)
-    val_fn = theano.function([input_var, target_var_original], [reconstructed_cost, reconstructed_test])
+    val_fn = theano.function([input_var, target_var_original], reconstructed_cost)
 
     print ("intialize encoder parameters")
     # We fix the encoder in this experiment
     #encoder_weights = np.load("../data/mnist_clutter_CNN_params_sigmoid.npy")
     #encoder_weights = np.load("../data/mnist_CNN_params_sigmoid.npy")
     #encoder_weights = np.load("../data/mnist_CNN_params.npy")
-    encoder_weights = np.load('../data/GMM_Classification_1.npy')
+    encoder_weights = np.load("../data/mnist_CNN_params_drop_out_NY_40.npy")
     #Try to get the first four layers of [conv, pool, conv, pool]
     encoder_model = lasagne.layers.get_all_layers(network)[5]
     print(lasagne.layers.get_all_layers(network))
     # The learned weights also contains the parameters for the softmax layer. Need to crop that out.
     #Set that equals to 2 since there is no bias; If there is bias, it should be 4
     lasagne.layers.set_all_param_values(encoder_model, encoder_weights[:6])
-     
+    
+
     print("Starting training...")
     # We iterate over epochs:
-    for epoch in range(100):
+    for epoch in range(30):
         # In each epoch, we do a full pass over the training data:
         train_err = 0
         train_batches = 0
@@ -179,18 +184,16 @@ def main(num_epochs = 50):
             test_batches = 0
             for batch in iterate_minibatches(X_test, X_test, 500, shuffle=False):
                 inputs, targets = batch
-                err, reconstruct = val_fn(inputs, targets)
+                err = val_fn(inputs, targets)
                 test_err += err
                 test_batches += 1
             print("Final results:")
             print("  test loss:\t\t\t{:.6f}".format(test_err / test_batches))
     weightsOfParams = lasagne.layers.get_all_param_values(network)
-    #import amitgroup.plot as gr
-    #gr.images(reconstruct[:100].reshape(100, 28, 28), show = False, fileName = "./png/test.png")
-    np.save("../data/mnist_clutter_autoencoder_params_For_GMM.npy", weightsOfParams) 
+    #np.save("../data/mnist_clutter_autoencoder_params_sigmoid.npy", weightsOfParams) 
     #np.save("../data/mnist_autoencoder_params_sigmoid.npy", weightsOfParams) 
     #np.save("../data/mnist_autoencoder_params_encoder_linear_decoder_no_bias.npy", weightsOfParams) 
-    #np.save("../data/mnist_autoencoder_params_encoder_linear_decoder_no_bias_one_rectify.npy", weightsOfParams) 
+    np.save("../data/mnist_autoencoder_params_NY_40.npy", weightsOfParams) 
 
 if __name__ == '__main__':
     main() 

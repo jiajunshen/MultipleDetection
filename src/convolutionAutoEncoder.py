@@ -21,7 +21,6 @@ def build_autoencoder(input_var=None):
     network = Conv2DLayer(
             network, num_filters=32, filter_size=(5, 5),
             nonlinearity=lasagne.nonlinearities.rectify,
-            #nonlinearity = lasagne.nonlinearities.sigmoid,
             W=lasagne.init.GlorotUniform())
     # Expert note: Lasagne provides alternative convolutional layers that
     # override Theano's choice of which implementation to use; for details
@@ -35,7 +34,6 @@ def build_autoencoder(input_var=None):
             network, num_filters=32, filter_size=(5, 5),
             nonlinearity=lasagne.nonlinearities.rectify,
             W = lasagne.init.GlorotUniform()
-            #nonlinearity = lasagne.nonlinearities.sigmoid
             )
 
     network = lasagne.layers.MaxPool2DLayer(network, pool_size=(2, 2))
@@ -45,20 +43,14 @@ def build_autoencoder(input_var=None):
             #lasagne.layers.dropout(network, p=.5),
             network,
             num_units=256,
-            #nonlinearity = None
             nonlinearity=lasagne.nonlinearities.rectify,
-            #nonlinearity = lasagne.nonlinearities.sigmoid
             )
 
     network = lasagne.layers.DenseLayer(
             #lasagne.layers.dropout(network, p=.5),
             network,
             num_units=512,
-            #b = None,
-            #nonlinearity = None)
             nonlinearity=lasagne.nonlinearities.rectify)
-#            nonlinearity = lasagne.nonlinearities.sigmoid,
-    #        nonlinearity = None)
 
     network = lasagne.layers.ReshapeLayer(
             network,
@@ -69,9 +61,7 @@ def build_autoencoder(input_var=None):
             2 )
     network = Conv2DLayer(
             network, num_filters = 32, filter_size = 5, pad = 'full',
-#            nonlinearity = lasagne.nonlinearities.sigmoid,
-            nonlinearity = None,
-            b = None
+            nonlinearity = lasagne.nonlinearities.rectify,
             )
     
     network = lasagne.layers.Upscale2DLayer(
@@ -80,9 +70,7 @@ def build_autoencoder(input_var=None):
 
     network = Conv2DLayer(
             network, num_filters = 1, filter_size = 5, pad = 'full',
-#            nonlinearity = lasagne.nonlinearities.sigmoid,
-            #nonlinearity = None, 
-            b = None
+            nonlinearity = lasagne.nonlinearities.rectify,
             )
 
     network = lasagne.layers.ReshapeLayer(
@@ -189,7 +177,7 @@ def main(num_epochs = 50):
     #np.save("../data/mnist_clutter_autoencoder_params_sigmoid.npy", weightsOfParams) 
     #np.save("../data/mnist_autoencoder_params_sigmoid.npy", weightsOfParams) 
     #np.save("../data/mnist_autoencoder_params_encoder_linear_decoder_no_bias.npy", weightsOfParams) 
-    np.save("../data/mnist_autoencoder_params_encoder_linear_decoder_no_bias_one_rectify.npy", weightsOfParams) 
+    np.save("../data/mnist_autoencoder_params_NY.npy", weightsOfParams) 
 
 if __name__ == '__main__':
     main() 
