@@ -8,7 +8,7 @@ from six.moves import urllib
 import tarfile
 import pickle
 import tensorflow as tf
-from tensorflow.models.image.cifar10 import cifar10_input
+import cifar10_input
 import lasagne
 from lasagne.layers import LocalResponseNormalization2DLayer, DenseLayer, Conv2DLayer, MaxPool2DLayer, InputLayer, DimshuffleLayer
 from lasagne.regularization import regularize_layer_params_weighted, l2
@@ -43,43 +43,8 @@ TOWER_NAME = 'tower'
 
 DATA_URL = 'http://www.cs.toronto.edu/~kriz/cifar-10-binary.tar.gz'
 
-def distorted_inputs():
-    """Construct distorted input for CIFAR training using the Reader ops.
 
-    Returns:
-        images: Images. 4D tensor of [batch_size, IMAGE_SIZE, IMAGE_SIZE, 3] size.
-        labels: Labels. 1D tensor of [batch_size] size.
-
-    Raises:
-        ValueError: If no data_dir
-    """
-    if not FLAGS.data_dir:
-        raise ValueError('Please supply a data_dir')
-    data_dir = os.path.join(FLAGS.data_dir, 'cifar-10-batches-bin')
-    return cifar10_input.distorted_inputs(data_dir=data_dir,
-                                          batch_size=FLAGS.batch_size)
-
-def inputs(eval_data):
-    """Construct input for CIFAR evaluation using the Reader ops.
-
-    Args:
-    eval_data: bool, indicating if one should use the train or eval data set.
-
-    Returns:
-    images: Images. 4D tensor of [batch_size, IMAGE_SIZE, IMAGE_SIZE, 3] size.
-    labels: Labels. 1D tensor of [batch_size] size.
-
-    Raises:
-    ValueError: If no data_dir
-    """
-    if not FLAGS.data_dir:
-        raise ValueError('Please supply a data_dir')
-    data_dir = os.path.join(FLAGS.data_dir, 'cifar-10-batches-bin')
-    return cifar10_input.inputs(eval_data=eval_data, data_dir=data_dir,
-                                batch_size=FLAGS.batch_size)
-
-
-def inference(input_var=None):
+def build_cnn(input_var=None):
     """Build the CIFAR-10 model.
 
     Args:
@@ -94,12 +59,10 @@ def inference(input_var=None):
     # by replacing all instances of tf.get_variable() with tf.Variable().
     #
 
-    input_layer = InputLayer((None, IMAGE_SIZE, IMAGE_SIZE, 3), input_var=input_var)
+    input_layer = InputLayer((None, 3, IMAGE_SIZE, IMAGE_SIZE), input_var=input_var)
     
-    shuffle_layer = DimshuffleLayer(input_layer, (0, 3, 1, 2))
-
     # conv1
-    conv1 = Conv2DLayer(shuffle_layer, num_filters=64, filter_size=(5,5),
+    conv1 = Conv2DLayer(input_layer, num_filters=64, filter_size=(5,5),
                         nonlinearity=lasagne.nonlinearities.rectify,
                         pad='same', W=lasagne.init.HeNormal(),
                         b=lasagne.init.Constant(0.0),
@@ -150,24 +113,3 @@ def inference(input_var=None):
     l2_penalty = regularize_layer_params_weighted(weight_decay_layers, l2)
 
     return softmax_layer, l2_penalty
-
-
-def maybe_download_and_extract():
-    """Download and extract the tarball from Alex's website."""
-    dest_directory = FLAGS.data_dir
-    if not os.path.exists(dest_directory):
-        os.makedirs(dest_directory)
-    filename = DATA_URL.split('/')[-1]
-    filepath = os.path.join(dest_directory, filename)
-    if not os.path.exists(filepath):
-        def _progress(count, block_size, total_size):
-            sys.stdout.write('\r>> Downloading %s %.1f%%' % (filename,
-            float(count * block_size) / float(total_size) * 100.0))
-            sys.stdout.flush()
-        filepath, _ = urllib.request.urlretrieve(DATA_URL, filepath, _progress)
-        print()
-        statinfo = os.stat(filepath)
-        print('Successfully downloaded', filename, statinfo.st_size, 'bytes.')
-        tarfile.open(filepath, 'r:gz').extractall(dest_directory)
-    
-
