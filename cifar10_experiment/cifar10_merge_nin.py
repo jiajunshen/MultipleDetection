@@ -44,7 +44,7 @@ TOWER_NAME = 'tower'
 DATA_URL = 'http://www.cs.toronto.edu/~kriz/cifar-10-binary.tar.gz'
 
 
-def build_cnn(input_var=None):
+def build_cnn(input_var=None, rotated_net=False, all_weights=None):
     """Build the CIFAR-10 model.
 
     Args:
@@ -71,6 +71,7 @@ def build_cnn(input_var=None):
     # pool1
     pool1 = MaxPool2DLayer(conv1, pool_size=(3, 3), stride=(2, 2), pad=1)
 
+
     # norm1
     norm1 = LocalResponseNormalization2DLayer(pool1, alpha=0.001 / 9.0,
                                               beta=0.75, k=1.0, n=9)
@@ -86,30 +87,69 @@ def build_cnn(input_var=None):
     norm2 = LocalResponseNormalization2DLayer(conv2, alpha=0.001 / 9.0,
                                               beta=0.75, k=1.0, n=9)
     
+    
     # pool2
     pool2 = MaxPool2DLayer(norm2, pool_size=(3, 3), stride=(2, 2), pad=1)
+
+    if rotated_net:    
+        # nin_layer
+        nin_layer = Conv2DLayer(pool2, num_filters=64, filter_size=(1,1),
+                                nonlinearity=lasagne.nonlinearities.rectify,
+                                pad='same', W=lasagne.init.HeNormal(),
+                                b=lasagne.init.Constant(0.1),
+                                name='nin_layer')
     
-    # fc1
-    fc1 = DenseLayer(pool2, num_units=384,
-                     nonlinearity=lasagne.nonlinearities.rectify,
-                     W=lasagne.init.HeNormal(), b=lasagne.init.Constant(0.1),
-                     name="fc1")
+        # middle_output_layer
+        network_middle_output = lasagne.layers.ReshapeLayer(nin_layer, shape = (([0], 2304)))
+        previous_layer = nin_layer
+    else:
+        network_middle_output = lasagne.layers.ReshapeLayer(pool2, shape = (([0], 2304)))
+        previous_layer = pool2
+            
 
-    # fc2
-    fc2 = DenseLayer(fc1, num_units=192,
-                     nonlinearity=lasagne.nonlinearities.rectify,
-                     W=lasagne.init.HeNormal(), b=lasagne.init.Constant(0.1),
-                     name="fc2")
+    if all_weights is None:
+        # fc1
+        fc1 = DenseLayer(previous_layer, num_units=384,
+                         nonlinearity=lasagne.nonlinearities.rectify,
+                         W=lasagne.init.HeNormal(), b=lasagne.init.Constant(0.1),
+                         name="fc1")
 
-    # fc3
-    softmax_layer = DenseLayer(fc2, num_units=10,
-                               nonlinearity=lasagne.nonlinearities.softmax,
-                               W=lasagne.init.HeNormal(),
-                               b=lasagne.init.Constant(0.0),
-                               name="softmax")
+        # fc2
+        fc2 = DenseLayer(fc1, num_units=192,
+                         nonlinearity=lasagne.nonlinearities.rectify,
+                         W=lasagne.init.HeNormal(), b=lasagne.init.Constant(0.1),
+                         name="fc2")
+
+        # fc3
+        softmax_layer = DenseLayer(fc2, num_units=10,
+                                   nonlinearity=lasagne.nonlinearities.softmax,
+                                   W=lasagne.init.HeNormal(),
+                                   b=lasagne.init.Constant(0.0),
+                                   name="softmax")
+
+    else:
+        # fc1
+        fc1 = DenseLayer(previous_layer, num_units=384,
+                         nonlinearity=lasagne.nonlinearities.rectify,
+                         W=all_weights[4], b=all_weights[5],
+                         name="fc1")
+
+        # fc2
+        fc2 = DenseLayer(fc1, num_units=192,
+                         nonlinearity=lasagne.nonlinearities.rectify,
+                         W=all_weights[6], b=all_weights[7],
+                         name="fc2")
+
+        # fc3
+        softmax_layer = DenseLayer(fc2, num_units=10,
+                                   nonlinearity=lasagne.nonlinearities.softmax,
+                                   W=all_weights[8],
+                                   b=all_weights[9],
+                                   name="softmax")
+    
 
     # Weight Decay
-    weight_decay_layers = {fc1: 0.002, fc2: 0.002}
+    weight_decay_layers = {fc1: 0.004, fc2: 0.004}
     l2_penalty = regularize_layer_params_weighted(weight_decay_layers, l2)
 
-    return softmax_layer, l2_penalty
+    return softmax_layer, network_middle_output, l2_penalty

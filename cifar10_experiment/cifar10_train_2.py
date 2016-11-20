@@ -41,7 +41,7 @@ FLAGS = tf.app.flags.FLAGS
 tf.app.flags.DEFINE_integer('batch_size', 128,
                             """size of batches.""")
 
-tf.app.flags.DEFINE_string('train_dir', '/home-nfs/jiajun/Research/MultipleDetection/cifar10_experiment/cifar10_theano_train_adam',
+tf.app.flags.DEFINE_string('train_dir', '/home-nfs/jiajun/Research/MultipleDetection/cifar10_experiment/cifar10_theano_train_adagrad',
                            """Directory where to write event logs """
                            """and checkpoint.""")
 tf.app.flags.DEFINE_integer('max_steps', 500000,
@@ -72,9 +72,9 @@ def train():
 
     params = lasagne.layers.get_all_params(cnn_model, trainable=True)
 
-    updates = lasagne.updates.adam(loss, params, learning_rate=0.001)
+    updates = lasagne.updates.adagrad(loss, params, learning_rate=0.01)
 
-    train_fn = theano.function([image_input_var, target_var], [loss, cross_entropy_loss_mean, weight_decay_penalty], updates=updates)
+    train_fn = theano.function([image_input_var, target_var], loss, updates=updates)
 
     test_acc = T.mean(T.eq(T.argmax(model_output, axis = 1), target_var),
                       dtype=theano.config.floatX)
@@ -130,7 +130,7 @@ def train():
         start_time = time.time()
         train_image, train_label = cifar10_data.train.next_batch(FLAGS.batch_size)
         end_time_1 = time.time() - start_time
-        loss_value, cross_entropy_value, weight_decay_value = train_fn(train_image, train_label)
+        loss_value = train_fn(train_image, train_label)
         duration = time.time() - start_time
 
         assert not np.isnan(loss_value), 'Model diverged with loss = NaN'
@@ -140,10 +140,9 @@ def train():
             examples_per_sec = num_examples_per_step / duration
             sec_per_batch = float(duration)
             
-            format_str = ('%s: step %d, loss = %.2f, weight_decay = %.2f, cross_entropy = %.2f (%.1f examples/sec; %.3f '
+            format_str = ('%s: step %d, loss = %.2f (%.1f examples/sec; %.3f '
                           'sec/batch); %.3f sec/batch prepration')
             print (format_str % (datetime.now(), step, loss_value,
-                                 weight_decay_value, cross_entropy_value,
                                  examples_per_sec, sec_per_batch, float(end_time_1)))
 
 def validate():

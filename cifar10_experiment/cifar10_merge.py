@@ -89,6 +89,9 @@ def build_cnn(input_var=None):
     # pool2
     pool2 = MaxPool2DLayer(norm2, pool_size=(3, 3), stride=(2, 2), pad=1)
     
+    # middle_output_layer
+    network_middle_output = lasagne.layers.ReshapeLayer(pool2, shape = (([0], 2304)))
+    
     # fc1
     fc1 = DenseLayer(pool2, num_units=384,
                      nonlinearity=lasagne.nonlinearities.rectify,
@@ -109,7 +112,7 @@ def build_cnn(input_var=None):
                                name="softmax")
 
     # Weight Decay
-    weight_decay_layers = {fc1: 0.002, fc2: 0.002}
+    weight_decay_layers = {fc1: 0.004, fc2: 0.004}
     l2_penalty = regularize_layer_params_weighted(weight_decay_layers, l2)
 
-    return softmax_layer, l2_penalty
+    return softmax_layer, network_middle_output, l2_penalty

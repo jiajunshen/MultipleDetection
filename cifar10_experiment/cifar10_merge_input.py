@@ -21,6 +21,8 @@ from __future__ import print_function
 
 import os
 import numpy as np
+import skimage
+import skimage.transform
 from six.moves import xrange  # pylint: disable=redefined-builtin
 
 # Process images of this size. Note that this differs from the original CIFAR
@@ -92,7 +94,15 @@ def resize_with_crop_or_pad(images, image_size):
         print(images.shape)
         final_image = [cv2.copyMakeBorder(images[i], offset, offset, offset, offset, cv2.BORDER_REFLECT) for i in range(image_num)]
         final_image = np.rollaxis(np.array(final_image), 3, 1)
-    return final_image 
+    return final_image
+
+def random_rotated_image(images, low = -20, high = 20):
+    image_num, image_channel, image_height, image_width = images.shape
+    rotated_degree = np.random.randint(low = low, high = high, size = image_num)
+    rotated_image = [skimage.transform.rotate(np.rollaxis(images[i], 0, 3), rotated_degree[i], mode="reflect") for i in range(image_num)]
+    rotated_image = np.rollaxis(np.array(rotated_image), 3, 1)
+    return rotated_image
+
 
 class DataSet(object):
     def __init__(self,
@@ -129,8 +139,11 @@ class DataSet(object):
             before_standardized_image = contrast_adjuested_image
         else:
             before_standardized_image = resize_with_crop_or_pad(images, image_size)
-        standardized_image = np.array(per_image_standardization(before_standardized_image), dtype=np.float32)
-        return standardized_image
+        rotated_image = random_rotated_image(np.array(before_standardized_image, dtype = np.float64))
+        
+        standardized_original_image = np.array(per_image_standardization(before_standardized_image), dtype=np.float32)
+        standardized_rotated_image = np.array(per_image_standardization(rotated_image), dtype=np.float32)
+        return standardized_original_image, standardized_rotated_image
 
     def next_batch(self, batch_size, image_size=IMAGE_SIZE):
         start = self._index_in_epoch
@@ -145,8 +158,9 @@ class DataSet(object):
             start = 0
             self._index_in_epoch = batch_size
         end = self._index_in_epoch
-        
-        return self.data_prepration(self._images[start:end], image_size, self._distortion),\
+        original_image, rotated_image = self.data_prepration(self._images[start:end], image_size, self._distortion)
+
+        return original_image, rotated_image,\
                self._labels[start:end]
 
     def next_eval_batch(self, batch_size, image_size=IMAGE_SIZE, distort=False):
@@ -154,12 +168,14 @@ class DataSet(object):
         self._index_in_eval_epoch += batch_size
         if start >= NUM_EXAMPLES_PER_EPOCH_FOR_EVAL:
             self._index_in_eval_epoch = 0
-            return None, None
+            return None, None, None
         else:
             end = self._index_in_eval_epoch
             resize_image = resize_with_crop_or_pad(self._images[start:end], image_size)
-            standardized_image = per_image_standardization(resize_image)
-            return np.array(standardized_image, dtype=np.float32), self._labels[start:end]
+            rotated_image = random_rotated_image(np.array(resize_image, dtype = np.float64))
+            standardized_original_image = np.array(per_image_standardization(resize_image), dtype = np.float32)
+            standardized_rotated_image = np.array(per_image_standardization(rotated_image), dtype = np.float32)
+            return standardized_original_image, standardized_rotated_image, self._labels[start:end]
             
     
             
