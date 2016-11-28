@@ -227,8 +227,8 @@ for epoch in range(num_epochs):
     start_time = time.time()
     for batch in iterate_minibatches(X_train, y_train, 100, shuffle = True):
         inputs, targets = batch
-        angles_1 = list(np.random.randint(low = -30, high = -10, size = 50))
-        angles_2 = list(np.random.randint(low = 10, high = 30, size = 50))
+        angles_1 = list(np.random.randint(low = -90, high = -10, size = 50))
+        angles_2 = list(np.random.randint(low = 10, high = 90, size = 50))
         angles = np.array(angles_1 + angles_2)
         np.random.shuffle(angles)
 
@@ -249,8 +249,8 @@ for epoch in range(num_epochs):
         test_cost = 0
         for batch in iterate_minibatches(X_test, y_test, 100, shuffle = False):
             inputs, targets = batch
-            angles_1 = list(np.random.randint(low = -20, high = -10, size = 50))
-            angles_2 = list(np.random.randint(low = 10, high = 20, size = 50))
+            angles_1 = list(np.random.randint(low = -90, high = -10, size = 50))
+            angles_2 = list(np.random.randint(low = 10, high = 90, size = 50))
             angles = np.array(angles_1 + angles_2)
             np.random.shuffle(angles)
             
