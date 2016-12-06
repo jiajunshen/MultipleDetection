@@ -9,15 +9,13 @@ import theano.tensor as T
 import lasagne
 from lasagne.layers.dnn import Conv2DDNNLayer as Conv2DLayer
 from lasagne.layers.dnn import MaxPool2DDNNLayer as MaxPool2DLayer
-# from lasagne.layers import Conv2DLayer
-# from lasagne.layers import MaxPool2DLayer
 from dataPreparation import load_data
 
 
 def build_cnn(input_var=None):
 
     # Input layer, as usual:
-    network = lasagne.layers.InputLayer(shape=(None, 1, 40, 40),
+    network = lasagne.layers.InputLayer(shape=(None, 1, 28, 28),
                                         input_var=input_var)
     # This time we do not apply input dropout, as it tends to work less well
     # for convolutional layers.
@@ -78,41 +76,12 @@ def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
         yield inputs[excerpt], targets[excerpt]
 
 
-def extend_image(inputs, size = 40):
-    extended_images = np.zeros((inputs.shape[0], 1, size, size), dtype = np.float32)
-    margin_size = (40 - inputs.shape[2]) / 2
-    extended_images[:, :, margin_size:margin_size + inputs.shape[2], margin_size:margin_size + inputs
-.shape[3]] = inputs
-    return extended_images
-
-
 def main(model='mlp', num_epochs=500):
     # Load the dataset
     print("Loading data...")
-    num_per_class = 10
-    print("Using %d per class" % num_per_class) 
     
     X_train, y_train, X_test, y_test = load_data("/X_train.npy", "/Y_train.npy", "/X_test.npy", "/Y_test.npy")
-    X_train_final = []
-    y_train_final = []
-    for i in range(10):
-        X_train_class = X_train[y_train == i]
-        #permutated_index = np.random.permutation(X_train_class.shape[0])
-        permutated_index = np.arange(X_train_class.shape[0])
-        X_train_final.append(X_train_class[permutated_index[:num_per_class]])
-        y_train_final += [i] * num_per_class
-    X_train = np.vstack(X_train_final)
-    y_train = np.array(y_train_final, dtype = np.int32)
-
-    if num_per_class <= 1000:
-        np.save("/home-nfs/jiajun/.mnist/X_train_limited_%d.npy" %num_per_class, X_train)
-        np.save("/home-nfs/jiajun/.mnist/Y_train_limited_%d.npy" %num_per_class, y_train)
-    
-    X_train = extend_image(X_train, 40)
-    X_test = extend_image(X_test, 40)
     #X_train, y_train, X_test, y_test = load_data("/cluttered_train_x.npy", "/cluttered_train_y.npy", "/cluttered_test_x.npy", "/cluttered_test_y.npy", dataset = "MNIST_CLUTTER")
-    _, _, X_test_rotated, y_test_rotated = load_data("/X_train.npy", "/Y_train.npy", "/X_test_rotated.npy", "/Y_test_rotated.npy")
-    X_test_rotated = extend_image(X_test_rotated, 40)
 
     # Prepare Theano variables for inputs and targets
     input_var = T.tensor4('inputs')
@@ -157,7 +126,7 @@ def main(model='mlp', num_epochs=500):
     # Finally, launch the training loop.
     print("Starting training...")
     # We iterate over epochs:
-    for epoch in range(num_epochs):
+    for epoch in range(30):
         # In each epoch, we do a full pass over the training data:
         train_err = 0
         train_batches = 0
@@ -175,7 +144,6 @@ def main(model='mlp', num_epochs=500):
 
         if epoch % 5 == 0: 
             # After training, we compute and print the test error:
-            print ("Start Evaluating")
             test_err = 0
             test_acc = 0
             test_batches = 0
@@ -189,21 +157,6 @@ def main(model='mlp', num_epochs=500):
             print("  test loss:\t\t\t{:.6f}".format(test_err / test_batches))
             print("  test accuracy:\t\t{:.2f} %".format(
                 test_acc / test_batches * 100))
-            
-            print ("Start Evaluating")
-            rotated_test_err = 0
-            rotated_test_acc = 0
-            rotated_test_batches = 0
-            for batch in iterate_minibatches(X_test_rotated, y_test_rotated, 500, shuffle=False):
-                inputs, targets = batch
-                err, acc = val_fn(inputs, targets)
-                rotated_test_err += err
-                rotated_test_acc += acc
-                rotated_test_batches += 1
-            print("Final results:")
-            print("  rotated test loss:\t\t\t{:.6f}".format(rotated_test_err / rotated_test_batches))
-            print("  rotated test accuracy:\t\t{:.2f} %".format(
-                rotated_test_acc / rotated_test_batches * 100))
 
             # Optionally, you could now dump the network weights to a file like this:
             # np.savez('model.npz', *lasagne.layers.get_all_param_values(network))
@@ -216,7 +169,7 @@ def main(model='mlp', num_epochs=500):
     #np.save("../data/mnist_clutter_CNN_params_sigmoid.npy", weightsOfParams)
     #np.save("../data/mnist_CNN_params_sigmoid.npy", weightsOfParams)
     #np.save("../data/mnist_CNN_params.npy", weightsOfParams)
-    np.save("../data/mnist_Chi_dec_10.npy", weightsOfParams)
+    np.save("../data/mnist_CNN_params_drop_out.npy", weightsOfParams)
     #np.save("../data/mnist_CNN_params_For_No_Bias_experiment_out.npy", weightsOfParams)
 
 
