@@ -43,10 +43,12 @@ class DataSet(object):
                  labels,
                  test=False,
                  distortion=True,
+                 rangeType = "int",
                  dtype=np.float32):
         self._num_examples = images.shape[0]
         self._images = np.array(images, dtype=dtype)
-        self._images = self._images / 255.0
+        if rangeType == "int":
+            self._images = self._images / 255.0
         self._labels = np.array(labels, dtype=np.int32)
         self._index_in_epoch = 0
         self._index_in_eval_epoch = 0
@@ -96,7 +98,7 @@ def read_evaluation_rotated_data_sets(data_dir, dtype=np.float32):
 
     test = DataSet(test_images, test_labels, test=True)
 
-    Datasets = collections.namedtuple('Datasets', ['test'])
+    Datasets = collections.namedtuple('Datasets', ['test'], rangeType = "real")
 
     return Datasets(test = test)
 
