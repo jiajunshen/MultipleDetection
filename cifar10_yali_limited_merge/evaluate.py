@@ -66,9 +66,9 @@ def train():
     rotated_model_output = lasagne.layers.get_output(rotated_cnn_model, rotated_image_input_var, deterministic = True)
 
     
-    if os.path.isfile(os.path.join(train_dir, 'latest_model.txt')):
+    if os.path.isfile(os.path.join(train_dir, 'evaluate_model.txt')):
         weight_file = ""
-        with open(os.path.join(train_dir, 'latest_model.txt'), 'r') as checkpoint_file:
+        with open(os.path.join(train_dir, 'evaluate_model.txt'), 'r') as checkpoint_file:
             weight_file = checkpoint_file.read().replace('\n', '')
         print("Loading from: ", weight_file)
         model_weights = np.load(weight_file)

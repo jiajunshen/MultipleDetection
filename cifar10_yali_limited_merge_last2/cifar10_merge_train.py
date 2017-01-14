@@ -182,7 +182,6 @@ def train():
 
         while(start != 0):
             #loss_value, train_acc = train_fn(original_train_image, rotated_train_image, train_label)
-            rotated_train_image = rotated_train_image[::-1]
             ori_mid, rot_mid, train_acc = train_fn(original_train_image, rotated_train_image, train_label)
             step += 1
             # if start == original_start:
