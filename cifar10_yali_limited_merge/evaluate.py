@@ -86,47 +86,28 @@ def train():
 
         
         print("Start Evaluating")
+        total_s_net_for_original = 0
+        total_s_net_for_rotation = 0
+
         original_test_image, test_label = cifar10_data_test.test.next_eval_batch(batch_size)
         while(original_test_image is not None):
-            t_net_for_original, s_net_for_original = val_fn(original_test_image, original_test_image, test_label)
-            total_t_net_for_original += t_net_for_original * original_test_image.shape[0]
+            s_net_for_original = val_fn(original_test_image, test_label)
             total_s_net_for_original += s_net_for_original * original_test_image.shape[0]
-
-            t_net_for_rotated, s_net_for_rotated = val_fn(rotated_test_image, rotated_test_image, test_label)
-            total_t_net_for_rotation += t_net_for_rotated * rotated_test_image.shape[0]
-            total_s_net_for_rotation += s_net_for_rotated * rotated_test_image.shape[0]
-
-            total_count += rotated_test_image.shape[0]
             original_test_image, rotated_test_image, test_label = cifar10_data.test.next_eval_batch(batch_size)
         
-        print("Student Network Accuracy on Original Image: %.4f" % (float(total_s_net_for_original / total_count)))
-        print("Teacher Network Accuracy on Original Image: %.4f" % (float(total_t_net_for_original / total_count)))
+        print("Student Network Accuracy on Original Image: %.4f" % (float(total_s_net_for_original / 10000.0)))
 
-        print("Student Network Accuracy on Rotated Image: %.4f" % (float(total_s_net_for_rotation / total_count)))
-        print("Teacher Network Accuracy on Rotated Image: %.4f" % (float(total_t_net_for_rotation / total_count)))
-        total_s_net_for_original = 0
-        total_t_net_for_rotation = 0
-        total_s_net_for_rotation = 0
-        total_count = 0
 
+
+
+        rotated_test_image, test_label = cifar10_data_rotated_test.test.next_eval_batch(batch_size)
 
         while(rotated_test_image is not None):
-            t_net_for_original, s_net_for_original = val_fn(original_test_image, original_test_image, test_label)
-            total_t_net_for_original += t_net_for_original * original_test_image.shape[0]
-            total_s_net_for_original += s_net_for_original * original_test_image.shape[0]
-
-            t_net_for_rotated, s_net_for_rotated = val_fn(rotated_test_image, rotated_test_image, test_label)
-            total_t_net_for_rotation += t_net_for_rotated * rotated_test_image.shape[0]
+            s_net_for_rotated = val_fn(rotated_test_image, test_label)
             total_s_net_for_rotation += s_net_for_rotated * rotated_test_image.shape[0]
-
-            total_count += rotated_test_image.shape[0]
             original_test_image, rotated_test_image, test_label = cifar10_data.test.next_eval_batch(batch_size)
         
-        print("Student Network Accuracy on Original Image: %.4f" % (float(total_s_net_for_original / total_count)))
-        print("Teacher Network Accuracy on Original Image: %.4f" % (float(total_t_net_for_original / total_count)))
-
-        print("Student Network Accuracy on Rotated Image: %.4f" % (float(total_s_net_for_rotation / total_count)))
-        print("Teacher Network Accuracy on Rotated Image: %.4f" % (float(total_t_net_for_rotation / total_count)))
+        print("Student Network Accuracy on Rotated Image: %.4f" % (float(total_s_net_for_rotation / 10000.0)))
 
 
 def main(argv=None):  # pylint: disable=unused-argument
