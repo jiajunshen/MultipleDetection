@@ -74,7 +74,7 @@ class DataSet(object):
         self._index_in_eval_epoch += batch_size
         if start >= NUM_EXAMPLES_PER_EPOCH_FOR_EVAL:
             self._index_in_eval_epoch = 0
-            return None, None, None
+            return None, None
         else:
             end = self._index_in_eval_epoch
             return self._images[start:end], self._labels[start:end]
