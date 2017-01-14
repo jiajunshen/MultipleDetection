@@ -93,7 +93,7 @@ def train():
         while(original_test_image is not None):
             s_net_for_original = val_fn(original_test_image, test_label)
             total_s_net_for_original += s_net_for_original * original_test_image.shape[0]
-            original_test_image, rotated_test_image, test_label = cifar10_data.test.next_eval_batch(batch_size)
+            original_test_image, test_label = cifar10_data_test.test.next_eval_batch(batch_size)
         
         print("Student Network Accuracy on Original Image: %.4f" % (float(total_s_net_for_original / 10000.0)))
 
@@ -105,7 +105,7 @@ def train():
         while(rotated_test_image is not None):
             s_net_for_rotated = val_fn(rotated_test_image, test_label)
             total_s_net_for_rotation += s_net_for_rotated * rotated_test_image.shape[0]
-            original_test_image, rotated_test_image, test_label = cifar10_data.test.next_eval_batch(batch_size)
+            rotated_test_image, test_label = cifar10_data_rotated_test.test.next_eval_batch(batch_size)
         
         print("Student Network Accuracy on Rotated Image: %.4f" % (float(total_s_net_for_rotation / 10000.0)))
 
