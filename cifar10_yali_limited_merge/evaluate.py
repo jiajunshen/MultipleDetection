@@ -79,7 +79,7 @@ def train():
 
         # Return the accuracy for teacher network and student network, respectively
         val_fn = theano.function(inputs = [rotated_image_input_var, target_var],
-                                 outputs = [train_acc])
+                                 outputs = train_acc)
 
         cifar10_data_test = cifar10_evaluate_input.load_cifar10_test()
         cifar10_data_rotated_test = cifar10_evaluate_input.load_cifar10_rotated_test()
