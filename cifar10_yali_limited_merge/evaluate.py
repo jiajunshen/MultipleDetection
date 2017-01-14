@@ -74,40 +74,38 @@ def train():
         model_weights = np.load(weight_file)
         lasagne.layers.set_all_param_values(rotated_cnn_model, model_weights)
 
-        train_acc = T.mean(T.eq(T.argmax(rotated_model_output, axis = 1), target_var),
-                           dtype=theano.config.floatX)
+    train_acc = T.mean(T.eq(T.argmax(rotated_model_output, axis = 1), target_var),
+                       dtype=theano.config.floatX)
 
-        # Return the accuracy for teacher network and student network, respectively
-        val_fn = theano.function(inputs = [rotated_image_input_var, target_var],
-                                 outputs = train_acc)
+    # Return the accuracy for teacher network and student network, respectively
+    val_fn = theano.function(inputs = [rotated_image_input_var, target_var],
+                             outputs = train_acc)
 
-        cifar10_data_test = cifar10_evaluate_input.load_cifar10_test()
-        cifar10_data_rotated_test = cifar10_evaluate_input.load_cifar10_rotated_test()
+    cifar10_data_test = cifar10_evaluate_input.load_cifar10_test()
+    cifar10_data_rotated_test = cifar10_evaluate_input.load_cifar10_rotated_test()
 
-        
-        print("Start Evaluating")
-        total_s_net_for_original = 0
-        total_s_net_for_rotation = 0
+    
+    print("Start Evaluating")
+    total_s_net_for_original = 0
+    total_s_net_for_rotation = 0
 
+    original_test_image, test_label = cifar10_data_test.test.next_eval_batch(batch_size)
+    while(original_test_image is not None):
+        s_net_for_original = val_fn(original_test_image, test_label)
+        total_s_net_for_original += s_net_for_original * original_test_image.shape[0]
         original_test_image, test_label = cifar10_data_test.test.next_eval_batch(batch_size)
-        while(original_test_image is not None):
-            s_net_for_original = val_fn(original_test_image, test_label)
-            total_s_net_for_original += s_net_for_original * original_test_image.shape[0]
-            original_test_image, test_label = cifar10_data_test.test.next_eval_batch(batch_size)
-        
-        print("Student Network Accuracy on Original Image: %.4f" % (float(total_s_net_for_original / 10000.0)))
+    
+    print("Student Network Accuracy on Original Image: %.4f" % (float(total_s_net_for_original / 10000.0)))
 
 
+    rotated_test_image, test_label = cifar10_data_rotated_test.test.next_eval_batch(batch_size)
 
-
+    while(rotated_test_image is not None):
+        s_net_for_rotated = val_fn(rotated_test_image, test_label)
+        total_s_net_for_rotation += s_net_for_rotated * rotated_test_image.shape[0]
         rotated_test_image, test_label = cifar10_data_rotated_test.test.next_eval_batch(batch_size)
-
-        while(rotated_test_image is not None):
-            s_net_for_rotated = val_fn(rotated_test_image, test_label)
-            total_s_net_for_rotation += s_net_for_rotated * rotated_test_image.shape[0]
-            rotated_test_image, test_label = cifar10_data_rotated_test.test.next_eval_batch(batch_size)
-        
-        print("Student Network Accuracy on Rotated Image: %.4f" % (float(total_s_net_for_rotation / 10000.0)))
+    
+    print("Student Network Accuracy on Rotated Image: %.4f" % (float(total_s_net_for_rotation / 10000.0)))
 
 
 def main(argv=None):  # pylint: disable=unused-argument
