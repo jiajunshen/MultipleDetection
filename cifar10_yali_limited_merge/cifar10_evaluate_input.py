@@ -96,9 +96,9 @@ def read_evaluation_rotated_data_sets(data_dir, dtype=np.float32):
     test_images = np.array(np.load(os.path.join(data_dir, "X_test_rotated.npy")).reshape(10000, 3, 32, 32), dtype=dtype)
     test_labels = np.load(os.path.join(data_dir, "Y_test_rotated.npy"))
 
-    test = DataSet(test_images, test_labels, test=True)
+    test = DataSet(test_images, test_labels, test=True, rangeType="float")
 
-    Datasets = collections.namedtuple('Datasets', ['test'], rangeType = "real")
+    Datasets = collections.namedtuple('Datasets', ['test'])
 
     return Datasets(test = test)
 
