@@ -47,6 +47,6 @@ all_images = all_images[index, 0, 6: 34, 6:34]
 all_labels = all_labels[index]
 
 
-np.save("/home-nfs/jiajun/.mnist/X_test_rotated_2.npy", all_images)
-np.save("/home-nfs/jiajun/.mnist/Y_test_rotated_2.npy", all_labels)
+np.save("/home/jiajun/.mnist/X_test_rotated.npy", all_images)
+np.save("/home/jiajun/.mnist/Y_test_rotated.npy", all_labels)
 

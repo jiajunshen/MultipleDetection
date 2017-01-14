@@ -44,8 +44,8 @@ def build_cnn(input_var=None):
 
     network = lasagne.layers.MaxPool2DLayer(network, pool_size=(2, 2))
     
-    network_middle_output = lasagne.layers.ReshapeLayer(network, shape = (([0], 1568)))
     
+    network_middle_output = lasagne.layers.ReshapeLayer(network, shape = (([0], 1568)))
 
     # A fully-connected layer of 256 units with 50% dropout on its inputs:
     network = lasagne.layers.DenseLayer(
@@ -119,8 +119,8 @@ def build_rotation_cnn(input_var=None):
 
     network = lasagne.layers.MaxPool2DLayer(network, pool_size=(2, 2))
     
-    network_middle_output = lasagne.layers.ReshapeLayer(network, shape = (([0], 1568)))
     
+    network_middle_output = lasagne.layers.ReshapeLayer(network, shape = (([0], 1568)))
     #network = Conv2DLayer(
     #        network, num_filters=32, filter_size=(1, 1),
     #        nonlinearity=lasagne.nonlinearities.rectify,
@@ -174,7 +174,7 @@ rotated_network, rotated_network_middle = build_rotation_cnn(rotated_input_var)
 # lasagne.layers.set_all_param_values(rotated_network, previous_trained)
 
 rotated_network_training_param = lasagne.layers.get_all_params(rotated_network_middle)
-rotated_network_middle_output = lasagne.layers.get_output(rotated_network_middle, rotated_input_var, deterministic = True)
+rotated_network_middle_output = lasagne.layers.get_output(rotated_network_middle, rotated_input_var, deterministic = False)
 rotated_network_output = lasagne.layers.get_output(rotated_network, rotated_input_var, deterministic = True)
 
 # build up the old network for the validation purpose
@@ -230,6 +230,10 @@ X_test = extend_image(X_test, 40)
 #y_test = y_test[y_test == 7]
 
 _, _, X_test_rotated, y_test_rotated = load_data("/X_train.npy", "/Y_train.npy", "/X_test_rotated.npy", "/Y_test_rotated.npy")
+
+X_test_rotated = X_test_rotated[y_test_rotated == 8]
+y_test_rotated = y_test_rotated[y_test_rotated == 8]
+
 X_test_rotated = extend_image(X_test_rotated, 40)
 
 def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
@@ -255,21 +259,21 @@ for epoch in range(num_epochs):
         start_time = time.time()
         for batch in iterate_minibatches(X_train, y_train, 100, shuffle = True):
             inputs, targets = batch
-            angles_1 = list(np.random.randint(low = -20, high = 0, size = 50))
-            angles_2 = list(np.random.randint(low = 0, high = 20, size = 50))
+            angles_1 = list(np.random.randint(low = -20, high = -5, size = 50))
+            angles_2 = list(np.random.randint(low = -5, high = 20, size = 50))
             angles = np.array(angles_1 + angles_2)
             np.random.shuffle(angles)
-
+            angles[targets == 8] = 0
             rotated_inputs = np.array([rotateImage(inputs[i], angles[i]) for i in range(100)], dtype = np.float32)
             current_cost, current_accuracy = train_fn(inputs, rotated_inputs, targets)
             accuracy += current_accuracy
             total_cost += current_cost
-            
-        # Then we print the results for this epoch:
-        print("Epoch {} of {} took {:.3f}s".format(
-             epoch + 1, num_epochs, time.time() - start_time))
-        print("training cost:\t\t{:.6f}".format(total_cost / train_batches))
-        print("training accuracy:\t\t{:.6f}".format(accuracy / train_batches))
+        if epoch % 50 == 0:         
+            # Then we print the results for this epoch:
+            print("Epoch {} of {} took {:.3f}s".format(
+                 epoch + 1, num_epochs, time.time() - start_time))
+            print("training cost:\t\t{:.6f}".format(total_cost / train_batches))
+            print("training accuracy:\t\t{:.6f}".format(accuracy / train_batches))
     
     if epoch % 100 == 0:
         print("Start Evaluating")

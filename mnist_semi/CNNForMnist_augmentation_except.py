@@ -95,7 +95,7 @@ def extend_image(inputs, size = 40):
     return extended_images
 
 
-def main(model='mlp', num_epochs=2001):
+def main(model='mlp', num_epochs=1001):
     # Load the dataset
     print("Loading data...")
     num_per_class = 100
@@ -123,6 +123,9 @@ def main(model='mlp', num_epochs=2001):
     #X_train, y_train, X_test, y_test = load_data("/cluttered_train_x.npy", "/cluttered_train_y.npy", "/cluttered_test_x.npy", "/cluttered_test_y.npy", dataset = "MNIST_CLUTTER")
     
     _, _, X_test_rotated, y_test_rotated = load_data("/X_train.npy", "/Y_train.npy", "/X_test_rotated.npy", "/Y_test_rotated.npy")
+    X_test_rotated = X_test_rotated[y_test_rotated == 1]
+    y_test_rotated = y_test_rotated[y_test_rotated == 1]
+
     X_test_rotated = extend_image(X_test_rotated, 40)
 
     # Prepare Theano variables for inputs and targets
@@ -133,7 +136,7 @@ def main(model='mlp', num_epochs=2001):
 
     network = build_cnn(input_var)
     
-    # all_weights = np.load("../data/mnist_Chi_dec_100.npy")
+    # all_weights = np.load("../data/mnist_Chi_dec_100_test.npy")
     # lasagne.layers.set_all_param_values(network, all_weights)
 
     # Create a loss expression for training, i.e., a scalar objective we want
@@ -179,25 +182,25 @@ def main(model='mlp', num_epochs=2001):
             start_time = time.time()
             for batch in iterate_minibatches(X_train, y_train, 100, shuffle=True):
                 inputs, targets = batch
-                angles_1 = list(np.random.randint(low = -20, high = -5, size = 25))
-                angles_2 = list(np.random.randint(low = 5, high = 20, size = 25))
-                angles_3 = [0] * 50
-                angles = np.array(angles_1 + angles_2 + angles_3)
+                angles_1 = list(np.random.randint(low = -20, high = 0, size = 50))
+                angles_2 = list(np.random.randint(low = 0, high = 20, size = 50))
+                # angles_3 = [0] * 50
+                angles = np.array(angles_1 + angles_2)
                 np.random.shuffle(angles)
-                # angles[targets == 8] = 0
+                angles[targets == 1] = 0
                 # angles[targets == 2] = 0
                 # angles[targets == 5] = 0
                 rotated_inputs = np.array([rotateImage(inputs[i], angles[i]) for i in range(100)], dtype = np.float32)            
                 train_err += train_fn(rotated_inputs, targets)
                 train_batches += 1
 
-            if epoch % 50 == 0:
+            if epoch % 100 == 0:
                 # Then we print the results for this epoch:
                 print("Epoch {} of {} took {:.3f}s".format(
                     epoch + 1, num_epochs, time.time() - start_time))
                 print("  training loss:\t\t{:.6f}".format(train_err / train_batches))
 
-        if epoch % 100 == 0: 
+        if epoch % 500 == 0: 
             # After training, we compute and print the test error:
             test_err = 0
             test_acc = 0

@@ -73,7 +73,7 @@ def build_cnn(input_var=None):
 original_input_var = T.tensor4('original_inputs')
 target_var = T.ivector('targets')
 original_network, original_network_middle = build_cnn(original_input_var)
-all_weights = np.load("../data/mnist_Chi_dec_10.npy")
+all_weights = np.load("../data/mnist_Chi_dec_100.npy")
 # all_weights = np.load("../data/mnist_CNN_params_drop_out_semi_Chi_Nov28_rot.npy")
 lasagne.layers.set_all_param_values(original_network, all_weights)
 original_network_middle_output = lasagne.layers.get_output(original_network_middle, original_input_var, deterministic = True)

@@ -89,7 +89,7 @@ def extend_image(inputs, size = 40):
 def main(model='mlp', num_epochs=500):
     # Load the dataset
     print("Loading data...")
-    num_per_class = 10
+    num_per_class = 100
     print("Using %d per class" % num_per_class) 
     
     X_train, y_train, X_test, y_test = load_data("/X_train.npy", "/Y_train.npy", "/X_test.npy", "/Y_test.npy")
@@ -105,8 +105,8 @@ def main(model='mlp', num_epochs=500):
     y_train = np.array(y_train_final, dtype = np.int32)
 
     if num_per_class <= 1000:
-        np.save("/home-nfs/jiajun/.mnist/X_train_limited_%d.npy" %num_per_class, X_train)
-        np.save("/home-nfs/jiajun/.mnist/Y_train_limited_%d.npy" %num_per_class, y_train)
+        np.save("/home/jiajun/.mnist/X_train_limited_%d.npy" %num_per_class, X_train)
+        np.save("/home/jiajun/.mnist/Y_train_limited_%d.npy" %num_per_class, y_train)
     
     X_train = extend_image(X_train, 40)
     X_test = extend_image(X_test, 40)
@@ -133,8 +133,9 @@ def main(model='mlp', num_epochs=500):
     # parameters at each training step. Here, we'll use Stochastic Gradient
     # Descent (SGD) with Nesterov momentum, but Lasagne offers plenty more.
     params = lasagne.layers.get_all_params(network, trainable=True)
-    updates = lasagne.updates.nesterov_momentum(
-            loss, params, learning_rate=0.01, momentum=0.9)
+    # updates = lasagne.updates.nesterov_momentum(
+    #         loss, params, learning_rate=0.01, momentum=0.9)
+    updates = lasagne.updates.adagrad(loss, params, learning_rate = 0.01)
 
     # Create a loss expression for validation/testing. The crucial difference
     # here is that we do a deterministic forward pass through the network,
@@ -216,7 +217,7 @@ def main(model='mlp', num_epochs=500):
     #np.save("../data/mnist_clutter_CNN_params_sigmoid.npy", weightsOfParams)
     #np.save("../data/mnist_CNN_params_sigmoid.npy", weightsOfParams)
     #np.save("../data/mnist_CNN_params.npy", weightsOfParams)
-    np.save("../data/mnist_Chi_dec_10.npy", weightsOfParams)
+    np.save("../data/mnist_Chi_dec_100_test_1.npy", weightsOfParams)
     #np.save("../data/mnist_CNN_params_For_No_Bias_experiment_out.npy", weightsOfParams)
 
 

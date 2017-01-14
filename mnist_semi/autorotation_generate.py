@@ -77,7 +77,7 @@ def build_cnn(input_var=None):
 original_input_var = T.tensor4('original_inputs')
 target_var = T.ivector('targets')
 original_network, original_network_middle = build_cnn(original_input_var)
-all_weights = np.load("../data/mnist_Chi_dec_100.npy")
+all_weights = np.load("../data/mnist_Chi_dec_100_test.npy")
 # all_weights = np.load("../data/mnist_CNN_params_drop_out_semi_Chi_Nov28_rot.npy")
 lasagne.layers.set_all_param_values(original_network, all_weights)
 original_network_middle_output = lasagne.layers.get_output(original_network_middle, original_input_var, deterministic = True)
@@ -175,7 +175,7 @@ rotated_input_var = T.tensor4('rotated_inputs')
 rotated_network, rotated_network_middle = build_rotation_cnn(rotated_input_var)
 # lasagne.layers.set_all_param_values(rotated_network, all_weights)
 rotated_network_training_param = lasagne.layers.get_all_params(rotated_network_middle)
-rotated_network_middle_output = lasagne.layers.get_output(rotated_network_middle, rotated_input_var, deterministic = False)
+rotated_network_middle_output = lasagne.layers.get_output(rotated_network_middle, rotated_input_var, deterministic = True)
 rotated_network_output = lasagne.layers.get_output(rotated_network, rotated_input_var, deterministic = True)
 
 # build up the old network for the validation purpose
@@ -223,10 +223,6 @@ from CNNForMnist import build_cnn, load_data
 from create_strokes import generate
 X_train, y_train, X_test, y_test = load_data("/X_train.npy", "/Y_train.npy", "/X_test.npy", "/Y_test.npy")
 
-X_train = generate(X_train, 12, 28, 1, 600000)
-
-X_train = extend_image(X_train, 40)
-y_train = np.array([1] * 600000, dtype = np.int32)
 
 #X_train = X_train[y_train == 7]
 #y_train = y_train[y_train == 7]
@@ -256,10 +252,13 @@ num_epochs = 2000
 
 for epoch in range(num_epochs):
     if epoch != 0:
+        X_train_generate = generate(X_train, 10, 28, 1, 50000)
+        X_train_generate = extend_image(X_train_generate, 40)
+        y_train_generate = np.array([1] * 50000, dtype = np.int32)
         accuracy = 0
         total_cost = 0
         start_time = time.time()
-        for batch in iterate_minibatches(X_train, y_train, 100, shuffle = True):
+        for batch in iterate_minibatches(X_train_generate, y_train_generate, 100, shuffle = True):
             inputs, targets = batch
             angles_1 = list(np.random.randint(low = -20, high = -5, size = 50))
             angles_2 = list(np.random.randint(low = 5, high = 20, size = 50))
@@ -270,14 +269,14 @@ for epoch in range(num_epochs):
             current_cost, current_accuracy = train_fn(inputs, rotated_inputs, targets)
             accuracy += current_accuracy
             total_cost += current_cost
-            
-        # Then we print the results for this epoch:
-        print("Epoch {} of {} took {:.3f}s".format(
-             epoch + 1, num_epochs, time.time() - start_time))
-        print("training cost:\t\t{:.6f}".format(total_cost / train_batches))
-        print("training accuracy:\t\t{:.6f}".format(accuracy / train_batches))
+        if epoch % 50 == 0:            
+            # Then we print the results for this epoch:
+            print("Epoch {} of {} took {:.3f}s".format(
+                 epoch + 1, num_epochs, time.time() - start_time))
+            print("training cost:\t\t{:.6f}".format(total_cost / train_batches))
+            print("training accuracy:\t\t{:.6f}".format(accuracy / train_batches))
     
-    if epoch % 5 == 0:
+    if epoch % 50 == 0:
         print("Start Evaluating")
         test_accuracy = 0
         test_accuracy_on_original = 0

@@ -56,7 +56,8 @@ def build_cnn(input_var=None):
             nonlinearity=lasagne.nonlinearities.rectify,
             )
     
-
+    
+    
     # And, finally, the 10-unit output layer with 50% dropout on its inputs:
     network = lasagne.layers.DenseLayer(
             lasagne.layers.dropout(network, p=.5),
@@ -64,10 +65,11 @@ def build_cnn(input_var=None):
             num_units=10,
             )
     
-
+    
+    
     network = lasagne.layers.NonlinearityLayer(
-            network,
-            nonlinearity=lasagne.nonlinearities.softmax)
+              network,
+              nonlinearity=lasagne.nonlinearities.softmax)
 
     return network, network_middle_output
 
@@ -76,7 +78,6 @@ original_input_var = T.tensor4('original_inputs')
 target_var = T.ivector('targets')
 original_network, original_network_middle = build_cnn(original_input_var)
 all_weights = np.load("../data/mnist_Chi_dec_100_test.npy")
-# all_weights = np.load("./a.npy")
 # all_weights = np.load("../data/mnist_CNN_params_drop_out_semi_Chi_Nov28_rot.npy")
 lasagne.layers.set_all_param_values(original_network, all_weights)
 original_network_middle_output = lasagne.layers.get_output(original_network_middle, original_input_var, deterministic = True)
@@ -147,7 +148,10 @@ def build_rotation_cnn(input_var=None):
             nonlinearity=lasagne.nonlinearities.rectify,
             )
     
-
+    
+    
+    
+    
     # And, finally, the 10-unit output layer with 50% dropout on its inputs:
     network = lasagne.layers.DenseLayer(
             lasagne.layers.dropout(network, p=.5),
@@ -169,16 +173,13 @@ def build_rotation_cnn(input_var=None):
 
 rotated_input_var = T.tensor4('rotated_inputs')
 rotated_network, rotated_network_middle = build_rotation_cnn(rotated_input_var)
-# previous_trained = np.load("../data/mnist_rotated_network_semi_Chi_Nov28.npy")
-
-# lasagne.layers.set_all_param_values(rotated_network, previous_trained)
-
+# lasagne.layers.set_all_param_values(rotated_network, all_weights)
 rotated_network_training_param = lasagne.layers.get_all_params(rotated_network_middle)
 rotated_network_middle_output = lasagne.layers.get_output(rotated_network_middle, rotated_input_var, deterministic = True)
 rotated_network_output = lasagne.layers.get_output(rotated_network, rotated_input_var, deterministic = True)
 
 # build up the old network for the validation purpose
-rotated_original_input_var = T.tensor4('rotated_inputs')
+rotated_original_input_var = T.tensor4('rotated_original_inputs')
 rotated_original_network, rotated_original_network_mid = build_cnn(rotated_original_input_var)
 lasagne.layers.set_all_param_values(rotated_original_network, all_weights)
 rotated_original_network_output = lasagne.layers.get_output(rotated_original_network, rotated_original_input_var, deterministic=True)
@@ -191,7 +192,7 @@ rotated_network_prediction_acc = T.mean(T.eq(T.argmax(rotated_network_output, ax
 L = T.mean(lasagne.objectives.squared_error(original_network_middle_output, rotated_network_middle_output), axis = 1)
 cost = T.mean(L)
 
-# updates = lasagne.updates.nesterov_momentum(cost, rotated_network_training_param, learning_rate = 0.001, momentum = 0.95)
+#updates = lasagne.updates.nesterov_momentum(cost, rotated_network_training_param, learning_rate = 0.01, momentum = 0.95)
 updates = lasagne.updates.adagrad(cost, rotated_network_training_param, learning_rate = 0.01)
 
 train_fn = theano.function(inputs = [original_input_var, rotated_input_var, target_var], 
@@ -219,10 +220,9 @@ def extend_image(inputs, size = 40):
     return extended_images
 
 from CNNForMnist import build_cnn, load_data
+from create_strokes import generate
+X_train, y_train, X_test, y_test = load_data("/X_train.npy", "/Y_train.npy", "/X_test.npy", "/Y_test.npy")
 
-num_train = 100
-X_train, y_train, X_test, y_test = load_data("/X_train_limited_%d.npy" %num_train, "/Y_train_limited_%d.npy" %num_train, "/X_test.npy", "/Y_test.npy")
-X_train = extend_image(X_train, 40)
 #X_train = X_train[y_train == 7]
 #y_train = y_train[y_train == 7]
 X_test = extend_image(X_test, 40)
@@ -230,6 +230,8 @@ X_test = extend_image(X_test, 40)
 #y_test = y_test[y_test == 7]
 
 _, _, X_test_rotated, y_test_rotated = load_data("/X_train.npy", "/Y_train.npy", "/X_test_rotated.npy", "/Y_test_rotated.npy")
+X_test_rotated = X_test_rotated[y_test_rotated == 1]
+y_test_rotated = y_test_rotated[y_test_rotated == 1]
 X_test_rotated = extend_image(X_test_rotated, 40)
 
 def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
@@ -245,18 +247,23 @@ def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
         yield inputs[excerpt], targets[excerpt]
 
 train_batches = X_train.shape[0] // 100
-test_batches = X_test.shape[0] // 100
+test_batches = X_test.shape[0] // 500
 rotated_test_batches = X_test_rotated.shape[0] // 500
-num_epochs = 2001
+num_epochs = 1000
+
 for epoch in range(num_epochs):
     if epoch != 0:
+        X_train_generate = X_train[y_train != 1]
+        X_train_generate = generate(X_train_generate, 10, 28, 1, 10000)
+        X_train_generate = extend_image(X_train_generate, 40)
+        y_train_generate = np.array([1] * 10000, dtype = np.int32)
         accuracy = 0
         total_cost = 0
         start_time = time.time()
-        for batch in iterate_minibatches(X_train, y_train, 100, shuffle = True):
+        for batch in iterate_minibatches(X_train_generate, y_train_generate, 100, shuffle = True):
             inputs, targets = batch
-            angles_1 = list(np.random.randint(low = -20, high = 0, size = 50))
-            angles_2 = list(np.random.randint(low = 0, high = 20, size = 50))
+            angles_1 = list(np.random.randint(low = -20, high = -5, size = 50))
+            angles_2 = list(np.random.randint(low = 5, high = 20, size = 50))
             angles = np.array(angles_1 + angles_2)
             np.random.shuffle(angles)
 
@@ -271,20 +278,20 @@ for epoch in range(num_epochs):
         print("training cost:\t\t{:.6f}".format(total_cost / train_batches))
         print("training accuracy:\t\t{:.6f}".format(accuracy / train_batches))
     
-    if epoch % 100 == 0:
+    if epoch % 5 == 0:
         print("Start Evaluating")
         test_accuracy = 0
         test_accuracy_on_original = 0
         original_test_accuracy = 0
         test_cost = 0
-        for batch in iterate_minibatches(X_test, y_test, 100, shuffle = False):
+        for batch in iterate_minibatches(X_test, y_test, 500, shuffle = False):
             inputs, targets = batch
-            angles_1 = list(np.random.randint(low = -20, high = -5, size = 50))
-            angles_2 = list(np.random.randint(low = 5, high = 20, size = 50))
+            angles_1 = list(np.random.randint(low = -20, high = -5, size = 250))
+            angles_2 = list(np.random.randint(low = 5, high = 20, size = 250))
             angles = np.array(angles_1 + angles_2)
             np.random.shuffle(angles)
             
-            rotated_inputs = np.array([rotateImage(inputs[i], angles[i]) for i in range(100)], dtype = np.float32)            
+            rotated_inputs = np.array([rotateImage(inputs[i], angles[i]) for i in range(500)], dtype = np.float32)            
             current_original_accuracy = val_fn_original(rotated_inputs, targets)
             current_cost, current_accuracy = val_fn(inputs, rotated_inputs, targets)
             _, current_accuracy_on_original = val_fn(inputs, inputs, targets)
@@ -315,4 +322,4 @@ for epoch in range(num_epochs):
 
 
 rotatedNetworkParams = lasagne.layers.get_all_param_values(rotated_network)
-np.save("../data/mnist_rotated_network_semi_Chi_Nov28_new.npy", rotatedNetworkParams)
+np.save("../data/mnist_rotated_network_semi_Chi_Nov28.npy", rotatedNetworkParams)
