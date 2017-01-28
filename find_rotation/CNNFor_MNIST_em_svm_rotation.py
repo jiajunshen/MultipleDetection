@@ -269,7 +269,7 @@ def main(model='mlp', num_epochs=1):
                 
                 for i in range(100):
                     train_loss = train_affine_fn(inputs)
-                    train_loss_exhaustive = train_loss_exhaustive(rotated_inputs)
+                    train_loss_exhaustive = get_affine_exhaustive_fn(rotated_inputs)
                 weightsOfParams = lasagne.layers.get_all_param_values(network_affine)
                 cached_affine_matrix[index] = weightsOfParams[0].reshape(-1, 10)
                 affine_train_batches += 1
