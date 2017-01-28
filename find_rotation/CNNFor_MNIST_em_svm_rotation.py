@@ -142,6 +142,8 @@ def main(model='mlp', num_epochs=1):
     # The dimension would be (nRotation * n, 10)
 
     predictions = lasagne.layers.get_output(network)
+
+    predictions = T.reshape(predictions, (-1, 10, 10))
     
     predictions_rotation = lasagne.layers.get_output(network_for_rotation)
     
