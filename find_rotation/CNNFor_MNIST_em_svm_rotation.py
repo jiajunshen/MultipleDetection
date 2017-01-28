@@ -180,6 +180,8 @@ def main(model='mlp', num_epochs=1):
     updates_model = lasagne.updates.adagrad(loss, model_params, learning_rate = 0.01)
 
     test_prediction = lasagne.layers.get_output(network, deterministic=True)
+
+    test_prediction = T.reshape(test_prediction, (-1, 10, 10))
     
     test_prediction_rotation = lasagne.layers.get_output(network_for_rotation, deterministic=True)
     
