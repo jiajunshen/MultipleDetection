@@ -16,7 +16,7 @@ from lasagne.regularization import regularize_layer_params_weighted, l2
 from dataPreparation import load_data
 from repeatLayer import Repeat
 from rotationMatrixLayer import RotationTransformationLayer
-
+from selectLayer import SelectLayer
 from CNNForMnist_Rotation_Net import build_cnn as build_rotation_cnn
 from CNNForMnist_Rotation_Net import rotateImage_batch 
 
@@ -135,7 +135,7 @@ def main(model='mlp', num_epochs=1):
     network_saved_weights = np.array([affine_matrix_matrix,] + [saved_weights[i] for i in range(saved_weights.shape[0])])
     
     lasagne.layers.set_all_param_values(network, network_saved_weights)
-    lasagne.layers.set_all_param_values(network_rotation, saved_weights)
+    lasagne.layers.set_all_param_values(network_exhaustive, saved_weights)
     
     # Create a loss expression for training, i.e., a scalar objective we want
     # to minimize (for our multi-class problem, it is the cross-entropy loss):
@@ -256,7 +256,7 @@ def main(model='mlp', num_epochs=1):
         if epoch % 200 == 0:
             weightsOfParams = lasagne.layers.get_all_param_values(network)
             ## Assign weights to network rotation##
-            lasagne.layers.set_all_param_values(network_rotation, weightsOfParams[1:])
+            lasagne.layers.set_all_param_values(network_exhaustive, weightsOfParams[1:])
             for batch in iterate_minibatches(X_train, y_train, 100, shuffle=True):
                 inputs, targets, index = batch
                 affine_params_newnet.set_value(cached_affine_matrix[index].reshape(-1,))

@@ -7,13 +7,9 @@ class RotationTransformationLayer(lasagne.layers.Layer):
     # incoming would be n x C x W x H 
     def __init__(self, incoming, n, name=None, Degree = lasagne.init.Normal(5), Translation = lasagne.init.Normal(0.01), **kwargs):
         super(RotationTransformationLayer, self).__init__(incoming, **kwargs)
-        loc_shp = self.input_shape
         self.n = n
-        if self.n != loc_shp[0]:
-            raise ValueError("n does not equal to loc_shp[0]")
         self.get_output_kwargs = []
         self.Degree = self.add_param(Degree, (n, ), name = "Degree")
-        print("RotationTransformation Layer Input", loc_shp)
 
     def get_output_for(self, input, **kwargs):
         cosT = T.cos(self.Degree * 3.1415926 / 180.0)
@@ -21,20 +17,20 @@ class RotationTransformationLayer(lasagne.layers.Layer):
         zeros = T.zeros_like(cosT)
         # zeros = self.Translation
         theta = T.stack([cosT, sinT, zeros, -sinT, cosT, zeros], axis = 1)
-        return _transform_affine(theta, input)
+        return transform_affine(theta, input)
 
     def get_output_shape_for(self, input_shape):
         return input_shape
     
 
-    def _transform_affine(theta, input):
+    def transform_affine(theta, input):
         num_batch, num_channels, height, width = input.shape
         theta = T.reshape(theta, (-1, 2, 3))
 
         # grid of (x_t, y_t, 1), eq (1) in ref [1]
         out_height = T.cast(height, 'int64')
         out_width = T.cast(width, 'int64')
-        grid = _meshgrid(out_height, out_width)
+        grid = meshgrid(out_height, out_width)
 
         # Transform A x (x_t, y_t, 1)^T -> (x_s, y_s)
         T_g = T.dot(theta, grid)
