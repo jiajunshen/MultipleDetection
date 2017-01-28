@@ -15,7 +15,7 @@ from lasagne.regularization import regularize_layer_params_weighted, l2
 # from lasagne.layers import MaxPool2DLayer
 from dataPreparation import load_data
 from repeatLayer import Repeat
-from rotationMatrixLayer import RotationMatrixLayer
+from rotationMatrixLayer import RotationTransformationLayer
 
 from CNNForMnist_rotation_Net import build_cnn as build_rotation_cnn
 from CNNForMnist_rotation_Net import rotateImage_batch 
@@ -31,7 +31,7 @@ def build_cnn(input_var=None):
 
     network = lasagne.layers.ReshapeLayer(repeatInput, (-1, 1, 40, 40))
     
-    network_transformed = RotationMatrixLayer(network)
+    network_transformed = RotationTransformationLayer(network)
 
     network = Conv2DLayer(
             network_transformed, num_filters=32, filter_size=(5, 5),
@@ -209,7 +209,7 @@ def main(model='mlp', num_epochs=1):
     cached_affine_matrix = np.array(np.zeros((X_train.shape[0], 10,)), dtype = np.float32)
     cached_affine_matrix_test = np.array(np.zeros((X_test.shape[0], 10,)), dtype = np.float32)
     for epoch in range(num_epochs):
-    """        
+        """        
         if epoch % 400 == -1:
             print ("Start Evaluating...")
             test_acc = 0
