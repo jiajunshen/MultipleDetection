@@ -21,7 +21,7 @@ from CNNForMnist_Rotation_Net import build_cnn as build_rotation_cnn
 from CNNForMnist_Rotation_Net import rotateImage_batch 
 
 
-def build_cnn(input_var=None):
+def build_cnn(input_var=None, batch_size = None):
 
     # Input layer, as usual:
     network = lasagne.layers.InputLayer(shape=(None, 1, 40, 40),
@@ -31,7 +31,7 @@ def build_cnn(input_var=None):
 
     network = lasagne.layers.ReshapeLayer(repeatInput, (-1, 1, 40, 40))
     
-    network_transformed = RotationTransformationLayer(network)
+    network_transformed = RotationTransformationLayer(network, batch_size)
 
     network = Conv2DLayer(
             network_transformed, num_filters=32, filter_size=(5, 5),
@@ -124,7 +124,7 @@ def main(model='mlp', num_epochs=1):
 
     # Create neural network model (depending on first command line parameter)
     
-    network, network_for_rotation, weight_decay, network_transformed = build_cnn(input_var)
+    network, network_for_rotation, weight_decay, network_transformed = build_cnn(input_var, batch_size)
     network_exhaustive, _ = build_rotation_cnn(input_var)
     
     # saved_weights = np.load("../data/mnist_Chi_dec_100.npy")

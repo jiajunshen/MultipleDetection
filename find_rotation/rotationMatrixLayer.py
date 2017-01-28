@@ -5,12 +5,14 @@ from collections import OrderedDict
 
 class RotationTransformationLayer(lasagne.layers.Layer):
     # incoming would be n x C x W x H 
-    def __init__(self, incoming, name=None, Degree = lasagne.init.Normal(5), Translation = lasagne.init.Normal(0.01), **kwargs):
+    def __init__(self, incoming, n, name=None, Degree = lasagne.init.Normal(5), Translation = lasagne.init.Normal(0.01), **kwargs):
         super(RotationTransformationLayer, self).__init__(incoming, **kwargs)
         loc_shp = self.input_shape
-        self.n = loc_shp[0]
+        self.n = n
+        if self.n != loc_shp[0]:
+            raise ValueError("n does not equal to loc_shp[0]")
         self.get_output_kwargs = []
-        self.Degree = self.add_param(Degree, (self.n, ), name = "Degree")
+        self.Degree = self.add_param(Degree, (n, ), name = "Degree")
         print("RotationTransformation Layer Input", loc_shp)
 
     def get_output_for(self, input, **kwargs):
