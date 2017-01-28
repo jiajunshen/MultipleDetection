@@ -31,7 +31,7 @@ def build_cnn(input_var=None, batch_size = None):
 
     network = lasagne.layers.ReshapeLayer(repeatInput, (-1, 1, 40, 40))
     
-    network_transformed = RotationTransformationLayer(network, batch_size)
+    network_transformed = RotationTransformationLayer(network, batch_size * 10)
 
     network = Conv2DLayer(
             network_transformed, num_filters=32, filter_size=(5, 5),
