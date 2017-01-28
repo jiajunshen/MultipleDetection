@@ -263,7 +263,7 @@ def main(model='mlp', num_epochs=1):
             lasagne.layers.set_all_param_values(network_exhaustive, weightsOfParams[1:])
             for batch in iterate_minibatches(X_train, y_train, 100, shuffle=True):
                 inputs, targets, index = batch
-                affine_params_newnet.set_value(cached_affine_matrix[index].reshape(-1,))
+                affine_params.set_value(cached_affine_matrix[index].reshape(-1,))
                 rotated_inputs = rotateImage_batch(inputs, nRotation).reshape(100 * nRotation, 1, 40, 40)
                 inputs = inputs.reshape(affine_network_size, 1, 40, 40)
                 
