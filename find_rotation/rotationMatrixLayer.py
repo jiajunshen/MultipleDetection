@@ -97,8 +97,8 @@ def meshgrid(height, width):
     # compute the meshgrid offline in numpy instead of doing it dynamically
     # in Theano. However, it hardly affected performance when we tried.
     x_t = T.dot(T.ones((height, 1)),
-                _linspace(-1.0, 1.0, width).dimshuffle('x', 0))
-    y_t = T.dot(_linspace(-1.0, 1.0, height).dimshuffle(0, 'x'),
+                linspace(-1.0, 1.0, width).dimshuffle('x', 0))
+    y_t = T.dot(linspace(-1.0, 1.0, height).dimshuffle(0, 'x'),
                 T.ones((1, width)))
 
     x_t_flat = x_t.reshape((1, -1))
@@ -106,6 +106,14 @@ def meshgrid(height, width):
     ones = T.ones_like(x_t_flat)
     grid = T.concatenate([x_t_flat, y_t_flat, ones], axis=0)
     return grid
+
+def linspace(start, stop, num):
+    # Theano linspace. Behaves similar to np.linspace
+    start = T.cast(start, theano.config.floatX)
+    stop = T.cast(stop, theano.config.floatX)
+    num = T.cast(num, theano.config.floatX)
+    step = (stop-start)/(num-1)
+    return T.arange(num, dtype=theano.config.floatX)*step+start
 
 
 class RotationTransformationLayer(lasagne.layers.Layer):
