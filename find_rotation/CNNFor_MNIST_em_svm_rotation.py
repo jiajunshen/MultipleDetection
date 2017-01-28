@@ -265,7 +265,7 @@ def main(model='mlp', num_epochs=1):
                 inputs, targets, index = batch
                 affine_params.set_value(cached_affine_matrix[index].reshape(-1,))
                 rotated_inputs = rotateImage_batch(inputs, nRotation).reshape(100 * nRotation, 1, 40, 40)
-                inputs = inputs.reshape(affine_network_size, 1, 40, 40)
+                inputs = inputs.reshape(batch_size, 1, 40, 40)
                 
                 for i in range(100):
                     train_loss = train_affine_fn(inputs)
