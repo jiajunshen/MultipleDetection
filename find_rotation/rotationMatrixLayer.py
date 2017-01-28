@@ -41,7 +41,7 @@ class RotationTransformationLayer(lasagne.layers.Layer):
 
         # dimshuffle input to  (bs, height, width, channels)
         input_dim = input.dimshuffle(0, 2, 3, 1)
-        input_transformed = _interpolate(
+        input_transformed = interpolate(
             input_dim, x_s_flat, y_s_flat,
             out_height, out_width)
 
@@ -50,7 +50,7 @@ class RotationTransformationLayer(lasagne.layers.Layer):
         output = output.dimshuffle(0, 3, 1, 2)  # dimshuffle to conv format
         return output
 
-    def _interpolate(im, x, y, out_height, out_width):
+    def interpolate(im, x, y, out_height, out_width):
         # *_f are floats
         num_batch, height, width, channels = im.shape
         height_f = T.cast(height, theano.config.floatX)
@@ -105,7 +105,7 @@ class RotationTransformationLayer(lasagne.layers.Layer):
         output = T.sum([wa*Ia, wb*Ib, wc*Ic, wd*Id], axis=0)
         return output
 
-    def _meshgrid(height, width):
+    def meshgrid(height, width):
         # This function is the grid generator from eq. (1) in reference [1].
         # It is equivalent to the following numpy code:
         #  x_t, y_t = np.meshgrid(np.linspace(-1, 1, width),
