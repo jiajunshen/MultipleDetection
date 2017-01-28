@@ -17,7 +17,7 @@ from dataPreparation import load_data
 
 
 # Turn nw*h to n*w*h*nRotation
-def rotateImage_batch(image, num_rotation=16):
+def rotateImage_batch(image, num_rotation=8):
     result_list = []
     for i in range(num_rotation):
         # angle = (90.0 / num_rotation) * i - 45
@@ -30,10 +30,10 @@ def rotateImage_batch(image, num_rotation=16):
 # If we found out the rotation index of the image is i out of nRotation
 # then we can unrotate the image, by the degree D:
 # D = -(360 / num_rotation) * i
-def unrotateImage(images, rotation_index, num_rotation = 16):
+def unrotateImage(images, rotation_index, num_rotation = 8):
     result_list = []
     unrotated_results = np.array([rotateImage(images[i], \
-        -(360.0 / num_rotation) * rotation_index[i]) for i in range(images.shape[0])], dtype = np.float32)
+        (360.0 / num_rotation) * rotation_index[i]) for i in range(images.shape[0])], dtype = np.float32)
 
     return unrotated_results
 
@@ -96,7 +96,8 @@ def build_cnn(input_var=None):
             lasagne.layers.dropout(fc1, p=.5),
             #network,
             num_units=10,
-            nonlinearity=lasagne.nonlinearities.softmax)
+            # nonlinearity=lasagne.nonlinearities.softmax)
+            nonlinearity=lasagne.nonlinearities.sigmoid)
     
     weight_decay_layers = {fc1:0.0, fc2:0.002}
     l2_penalty = regularize_layer_params_weighted(weight_decay_layers, l2)
@@ -134,14 +135,14 @@ def main(model='mlp'):
     # print("Using %d per class" % num_per_class) 
     print("Using all the training data") 
     
-    #X_train, y_train, X_test, y_test = load_data("/X_train.npy", "/Y_train.npy", "/X_test_rotated.npy", "/Y_test_rotated.npy")
+    # X_train, y_train, X_test, y_test = load_data("/X_train.npy", "/Y_train.npy", "/X_test_rotated.npy", "/Y_test_rotated.npy")
     X_train, y_train, X_test, y_test = load_data("/mnistROT.npy", "/mnistROTLabel.npy", "/mnistROTTEST.npy", "/mnistROTLABELTEST.npy", "ROT_MNIST")
    
     X_train = extend_image(X_train, 40)
     X_test = extend_image(X_test, 40)
 
     # Prepare Theano variables for inputs and targets
-    nRotation = 16
+    nRotation = 32
     
     # The dimension would be (nRotation * n, w, h)
     input_var = T.tensor4('inputs')
@@ -155,26 +156,39 @@ def main(model='mlp'):
     
     network, weight_decay = build_cnn(input_var)
     
-    saved_weights = np.load("../data/mnist_CNN_params_drop_out_Chi_2017.npy")
+    # saved_weights = np.load("../data/mnist_CNN_params_drop_out_Chi_2017_0.3.npy")
+    saved_weights = np.load("../data/mnist_CNN_params_drop_out_Chi_2017_ROT_hinge_2000.npy")
     lasagne.layers.set_all_param_values(network, saved_weights)
 
     # Create a loss expression for validation/testing. The crucial difference
     # here is that we do a deterministic forward pass through the network,
     # disabling dropout layers.
-    test_prediction = lasagne.layers.get_output(network, deterministic=True)
-    test_prediction = T.reshape(test_prediction,(nRotation, -1, 10))
+    test_prediction_old = lasagne.layers.get_output(network, deterministic=True)
+    test_prediction_old = T.reshape(test_prediction_old,(nRotation, -1, 10))
 
-    test_rotation = T.argmax(T.argmax(test_prediction, axis = 2), axis = 0)
-    test_prediction = test_prediction.max(axis = 0)
+    test_rotation = T.argmax(T.max(test_prediction_old, axis = 2), axis = 0)
+    
+    test_prediction = test_prediction_old.max(axis = 0)
      
     test_loss = lasagne.objectives.multiclass_hinge_loss(test_prediction, vanilla_target_var)
     test_loss = test_loss.mean()
+    
+    prediction_result = T.eq(T.argmax(test_prediction, axis=1), vanilla_target_var) 
     # As a bonus, also create an expression for the classification accuracy:
-    test_acc = T.mean(T.eq(T.argmax(test_prediction, axis=1), vanilla_target_var),
-                      dtype=theano.config.floatX)
+    test_acc = T.mean(prediction_result, dtype=theano.config.floatX)
+
+    # test_prediction_fake = test_prediction_old.swapaxes(0, 2)
+    # test_prediction_fake = test_prediction_old.swapaxes(0, 1)
+    # prediction_index = T.argmax(test_prediction, axis = 1)
+
+    # one_hot_targets = T.extra_ops.to_one_hot(prediction_index, 10)
+
+    # test_prediction_fake = test_prediction_fake[one_hot_targets.nonzero()]
+
+    # test_rotation = T.argmax(test_prediction_fake, axis = 1)
 
     # Compile a second function computing the validation loss and accuracy:
-    val_fn = theano.function([input_var, vanilla_target_var], [test_loss, test_acc, test_rotation])
+    val_fn = theano.function([input_var, vanilla_target_var], [test_loss, test_acc, test_rotation, prediction_result, test_prediction_old])
 
     # Finally, launch the training loop.
     print("Starting evaluating...")
@@ -182,23 +196,26 @@ def main(model='mlp'):
     test_err = 0
     test_acc = 0
     test_batches = 0
-    unrotated_images = []
-    for batch in iterate_minibatches(X_test, y_test, 500, shuffle=False):
+    for batch in iterate_minibatches(X_test, y_test, 100, shuffle=False):
         inputs, targets = batch
-        inputs = inputs.reshape(500, 40, 40)
-        inputs = rotateImage_batch(inputs, nRotation).reshape(500 * nRotation, 1, 40, 40)
-        err, acc, test_rotation = val_fn(inputs, targets)
-        unrotated_inputs = unrotateImage(inputs, test_rotation)
-        unrotated_images.append(unrotated_inputs)
+        inputs = inputs.reshape(100, 40, 40)
+        dup_inputs = rotateImage_batch(inputs, nRotation).reshape(100 * nRotation, 1, 40, 40)
+        err, acc, test_rotation, prediction_res, prediction_val = val_fn(dup_inputs, targets)
+        unrotated_inputs = unrotateImage(inputs, test_rotation, nRotation)
         test_err += err
         test_acc += acc
         test_batches += 1
-    unrotated_images = np.vstack(unrotated_images)
+        prediction_val = prediction_val.reshape(nRotation, 100, 10)
+        if (test_batches == 1):
+            print(targets)
+            print(test_rotation)
+            print(prediction_res)
+            np.save("./subset_unrotate_hinge.npy", unrotated_inputs)
+            print(prediction_val[:, 8])
     print("Final results:")
     print("  test loss:\t\t\t{:.6f}".format(test_err / test_batches))
     print("  test accuracy:\t\t{:.2f} %".format(
         test_acc / test_batches * 100))
-    np.save("./unrotated_images.npy", unrotated_images)
    
 
 

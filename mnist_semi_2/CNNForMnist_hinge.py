@@ -59,7 +59,9 @@ def build_cnn(input_var=None):
             lasagne.layers.dropout(network, p=.5),
             #network,
             num_units=10,
-            nonlinearity=lasagne.nonlinearities.softmax)
+            # nonlinearity=lasagne.nonlinearities.rectify,
+            # nonlinearity=lasagne.nonlinearities.sigmoid
+            )
 
     return network
 
@@ -86,7 +88,7 @@ def extend_image(inputs, size = 40):
     return extended_images
 
 
-def main(model='mlp', num_epochs=500):
+def main(model='mlp', num_epochs=3000):
     # Load the dataset
     print("Loading data...")
     num_per_class = 100
@@ -136,7 +138,7 @@ def main(model='mlp', num_epochs=500):
     # here is that we do a deterministic forward pass through the network,
     # disabling dropout layers.
     test_prediction = lasagne.layers.get_output(network, deterministic=True)
-    test_loss = lasagne.objectives.categorical_crossentropy(test_prediction,
+    test_loss = lasagne.objectives.multiclass_hinge_loss(test_prediction,
                                                             target_var)
     test_loss = test_loss.mean()
     # As a bonus, also create an expression for the classification accuracy:
@@ -145,10 +147,13 @@ def main(model='mlp', num_epochs=500):
 
     # Compile a function performing a training step on a mini-batch (by giving
     # the updates dictionary) and returning the corresponding training loss:
-    train_fn = theano.function([input_var, target_var], loss, updates=updates)
+    train_fn = theano.function([input_var, target_var], [loss,prediction], updates=updates)
 
     # Compile a second function computing the validation loss and accuracy:
     val_fn = theano.function([input_var, target_var], [test_loss, test_acc])
+    
+    # weightsOfParams = np.load("../data/mnist_CNN_params_drop_out_Chi_2017_hinge.npy")
+    # lasagne.layers.set_all_param_values(network, weightsOfParams)
 
     # Finally, launch the training loop.
     print("Starting training...")
@@ -160,7 +165,8 @@ def main(model='mlp', num_epochs=500):
         start_time = time.time()
         for batch in iterate_minibatches(X_train, y_train, 100, shuffle=True):
             inputs, targets = batch
-            train_err += train_fn(inputs, targets)
+            train_batch_err, train_batch_prediction = train_fn(inputs, targets)
+            train_err += train_batch_err
             train_batches += 1
 
 
@@ -197,7 +203,7 @@ def main(model='mlp', num_epochs=500):
     #np.save("../data/mnist_CNN_params_sigmoid.npy", weightsOfParams)
     #np.save("../data/mnist_CNN_params.npy", weightsOfParams)
     #np.save("../data/mnist_CNN_params_drop_out_semi_Chi_Dec7.npy", weightsOfParams)
-    np.save("../data/mnist_CNN_params_drop_out_Chi_2017.npy", weightsOfParams)
+    np.save("../data/mnist_CNN_params_drop_out_Chi_2017_hinge.npy", weightsOfParams)
     #np.save("../data/mnist_CNN_params_For_No_Bias_experiment_out.npy", weightsOfParams)
 
 

@@ -148,57 +148,27 @@ def main(model='mlp', num_epochs=500):
 
     # Compile a second function computing the validation loss and accuracy:
     val_fn = theano.function([input_var, target_var], [test_loss, test_acc])
+    
+    weightsOfParams = np.load("../data/mnist_CNN_params_drop_out_Chi_2017_.npy")
+    lasagne.layers.set_all_param_values(network, weightsOfParams)
 
     # Finally, launch the training loop.
     print("Starting training...")
     # We iterate over epochs:
-    for epoch in range(num_epochs):
-        # In each epoch, we do a full pass over the training data:
-        train_err = 0
-        train_batches = 0
-        start_time = time.time()
-        for batch in iterate_minibatches(X_train, y_train, 100, shuffle=True):
-            inputs, targets = batch
-            train_err += train_fn(inputs, targets)
-            train_batches += 1
-
-
-        # Then we print the results for this epoch:
-        print("Epoch {} of {} took {:.3f}s".format(
-            epoch + 1, num_epochs, time.time() - start_time))
-        print("  training loss:\t\t{:.6f}".format(train_err / train_batches))
-
-        if epoch % 5 == 0: 
-            # After training, we compute and print the test error:
-            test_err = 0
-            test_acc = 0
-            test_batches = 0
-            for batch in iterate_minibatches(X_test, y_test, 500, shuffle=False):
-                inputs, targets = batch
-                err, acc = val_fn(inputs, targets)
-                test_err += err
-                test_acc += acc
-                test_batches += 1
-            print("Final results:")
-            print("  test loss:\t\t\t{:.6f}".format(test_err / test_batches))
-            print("  test accuracy:\t\t{:.2f} %".format(
-                test_acc / test_batches * 100))
-
-            # Optionally, you could now dump the network weights to a file like this:
-            # np.savez('model.npz', *lasagne.layers.get_all_param_values(network))
-            #
-            # And load them again later on like this:
-            # with np.load('model.npz') as f:
-            #     param_values = [f['arr_%d' % i] for i in range(len(f.files))]
-            # lasagne.layers.set_all_param_values(network, param_values)
-    weightsOfParams = lasagne.layers.get_all_param_values(network)
-    #np.save("../data/mnist_clutter_CNN_params_sigmoid.npy", weightsOfParams)
-    #np.save("../data/mnist_CNN_params_sigmoid.npy", weightsOfParams)
-    #np.save("../data/mnist_CNN_params.npy", weightsOfParams)
-    #np.save("../data/mnist_CNN_params_drop_out_semi_Chi_Dec7.npy", weightsOfParams)
-    # np.save("../data/mnist_CNN_params_drop_out_Chi_2017.npy", weightsOfParams)
-    np.save("../data/mnist_CNN_params_drop_out_Chi_2017_.npy", weightsOfParams)
-    #np.save("../data/mnist_CNN_params_For_No_Bias_experiment_out.npy", weightsOfParams)
+    # After training, we compute and print the test error:
+    test_err = 0
+    test_acc = 0
+    test_batches = 0
+    for batch in iterate_minibatches(X_test, y_test, 500, shuffle=False):
+        inputs, targets = batch
+        err, acc = val_fn(inputs, targets)
+        test_err += err
+        test_acc += acc
+        test_batches += 1
+    print("Final results:")
+    print("  test loss:\t\t\t{:.6f}".format(test_err / test_batches))
+    print("  test accuracy:\t\t{:.2f} %".format(
+        test_acc / test_batches * 100))
 
 
 

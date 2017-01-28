@@ -15,6 +15,19 @@ from lasagne.regularization import regularize_layer_params_weighted, l2
 # from lasagne.layers import MaxPool2DLayer
 from dataPreparation import load_data
 
+def one_vs_all_hinge_loss(predictions, targets, delta = 1):
+    num_cls = predictions.shape[1]
+    if targets.ndim == predictions.ndim - 1:
+        targets = theano.tensor.extra_ops.to_one_hot(targets, num_cls)
+    elif targets.ndim != predictions.ndim:
+        raise TypeError('rank mismatch between targets and predictions')
+    corrects = T.reshape(predictions[targets.nonzero()], (-1, 1))
+    rest = theano.tensor.reshape(predictions[(1-targets).nonzero()],
+                                 (-1, num_cls-1))
+    rest = rest - corrects + delta
+    rest = theano.tensor.sum(rest, axis = 1)
+    return theano.tensor.nnet.relu(rest)
+
 # Turn nw*h to n*w*h*nRotation
 def rotateImage_batch(image, num_rotation=16):
     result_list = []
@@ -80,7 +93,7 @@ def build_cnn(input_var=None):
             lasagne.layers.dropout(fc1, p=.5),
             #network,
             num_units=10,
-            nonlinearity=lasagne.nonlinearities.softmax)
+            )
     
     weight_decay_layers = {fc1:0.0, fc2:0.002}
     l2_penalty = regularize_layer_params_weighted(weight_decay_layers, l2)
@@ -110,7 +123,7 @@ def extend_image(inputs, size = 40):
     return extended_images
 
 
-def main(model='mlp', num_epochs=1000):
+def main(model='mlp', num_epochs=2000):
     # Load the dataset
     print("Loading data...")
     # num_per_class = 100
@@ -151,7 +164,8 @@ def main(model='mlp', num_epochs=1000):
     
     network, weight_decay = build_cnn(input_var)
     
-    saved_weights = np.load("../data/mnist_Chi_dec_100.npy")
+    # saved_weights = np.load("../data/mnist_Chi_dec_100.npy")
+    saved_weights = np.load("../data/mnist_CNN_params_drop_out_Chi_2017_hinge.npy")
     lasagne.layers.set_all_param_values(network, saved_weights)
 
     # Create a loss expression for training, i.e., a scalar objective we want
@@ -160,14 +174,23 @@ def main(model='mlp', num_epochs=1000):
     predictions = lasagne.layers.get_output(network)
 
     # The diVmension would be (nRotation * n, 10)
-    one_hot_targets = T.extra_ops.to_one_hot(target_var, 10)
+    one_hot_targets = T.extra_ops.to_one_hot(vanilla_target_var, 10)
 
     rests = T.reshape(predictions, (nRotation, -1, 10))
 
-    rests = T.max(T.as_tensor_variable(rests), axis = 0)
+    # final_rests = rests[0]
+    final_rests = T.max(rests, 0)
+
+    rests = T.swapaxes(rests, 0, 2)
+    rests = T.swapaxes(rests, 0, 1)
+    rests = rests[one_hot_targets.nonzero()]
+    rests = T.max(rests, axis = 1)
+    
+    final_rests = T.set_subtensor(final_rests[one_hot_targets.nonzero()], rests)
 
     # loss = lasagne.objectives.categorical_crossentropy(prediction, target_var)
-    loss = lasagne.objectives.multiclass_hinge_loss(rests, vanilla_target_var)
+    # loss = one_vs_all_hinge_loss(final_rests, vanilla_target_var)
+    loss = lasagne.objectives.multiclass_hinge_loss(final_rests, vanilla_target_var)
     loss = loss.mean() + weight_decay
     # We could add some weight decay as well here, see lasagne.regularization.
 
@@ -184,12 +207,20 @@ def main(model='mlp', num_epochs=1000):
     # disabling dropout layers.
     test_prediction = lasagne.layers.get_output(network, deterministic=True)
     test_prediction = T.reshape(test_prediction,(nRotation, -1, 10))
-    test_prediction = test_prediction.max(axis = 0)
+    test_prediction_res = test_prediction.max(axis = 0)
+
+    final_test_prediction_res = test_prediction[0]
+    test_prediction_process = T.swapaxes(test_prediction, 0, 2)
+    test_prediction_process = T.swapaxes(test_prediction_process, 0, 1)
+    test_prediction_process = test_prediction_process[one_hot_targets.nonzero()]
+    test_prediction_process = T.max(test_prediction_process, axis = 1)
+
+    final_test_prediction_res = T.set_subtensor(final_test_prediction_res[one_hot_targets.nonzero()], test_prediction_process)
     
-    test_loss = lasagne.objectives.multiclass_hinge_loss(test_prediction, vanilla_target_var)
-    test_loss = test_loss.mean()
+    test_loss = lasagne.objectives.multiclass_hinge_loss(final_test_prediction_res, vanilla_target_var)
+    test_loss = test_loss.mean() + weight_decay
     # As a bonus, also create an expression for the classification accuracy:
-    test_acc = T.mean(T.eq(T.argmax(test_prediction, axis=1), vanilla_target_var),
+    test_acc = T.mean(T.eq(T.argmax(test_prediction_res, axis=1), vanilla_target_var),
                       dtype=theano.config.floatX)
 
     # Compile a function performing a training step on a mini-batch (by giving
@@ -221,7 +252,7 @@ def main(model='mlp', num_epochs=1000):
             epoch + 1, num_epochs, time.time() - start_time))
         print("  training loss:\t\t{:.6f}".format(train_err / train_batches))
 
-        if epoch % 5 == 0: 
+        if epoch % 50 == 0: 
            # After training, we compute and print the test error:
             test_err = 0
             test_acc = 0
@@ -268,7 +299,7 @@ def main(model='mlp', num_epochs=1000):
     #np.save("../data/mnist_CNN_params_sigmoid.npy", weightsOfParams)
     #np.save("../data/mnist_CNN_params.npy", weightsOfParams)
     #np.save("../data/mnist_CNN_params_drop_out_semi_Chi_Dec7.npy", weightsOfParams)
-    np.save("../data/mnist_CNN_params_drop_out_Chi_2017_ROT_test.npy", weightsOfParams)
+    np.save("../data/mnist_CNN_params_drop_out_Chi_2017_ROT_hinge_2000.npy", weightsOfParams)
     #np.save("../data/mnist_CNN_params_For_No_Bias_experiment_out.npy", weightsOfParams)
 
 
