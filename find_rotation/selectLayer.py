@@ -11,7 +11,6 @@ class SelectLayer(lasagne.layers.Layer):
         self.n = n
 
     def get_output_for(self, input, **kwargs):
-        theta = T.reshape(theta, (-1, 2, 3))
         input_reshape = T.reshape(input, (-1, self.n, self.n))
         input_reshape = input_reshape.dimshuffle(1, 2, 0)
         target_index = T.eye(self.n, self.n)
