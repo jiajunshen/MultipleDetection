@@ -17,8 +17,8 @@ from dataPreparation import load_data
 from repeatLayer import Repeat
 from rotationMatrixLayer import RotationTransformationLayer
 
-from CNNForMnist_rotation_Net import build_cnn as build_rotation_cnn
-from CNNForMnist_rotation_Net import rotateImage_batch 
+from CNNForMnist_Rotation_Net import build_cnn as build_rotation_cnn
+from CNNForMnist_Rotation_Net import rotateImage_batch 
 
 
 def build_cnn(input_var=None):
