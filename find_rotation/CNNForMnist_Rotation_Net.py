@@ -78,6 +78,7 @@ def build_cnn(input_var=None):
     # And, finally, the 10-unit output layer with 50% dropout on its inputs:
     fc2  = lasagne.layers.DenseLayer(
             lasagne.layers.dropout(fc1, p=.5),
+            nonlinearity=lasagne.nonlinearities.identity,
             #network,
             num_units=10,
             )
