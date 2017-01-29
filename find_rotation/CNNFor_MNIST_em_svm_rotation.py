@@ -215,7 +215,7 @@ def main(model='mlp', num_epochs=1):
 
     train_model_fn = theano.function([input_var, vanilla_target_var], [loss,train_acc_1, train_acc_2], updates=updates_model)
     
-    train_affine_fn = theano.function([input_var], [loss_affine, loss_affine_before, d_loss_wrt_params[0], transformed_images], updates=updates_affine)
+    train_affine_fn = theano.function([input_var], [loss_affine, loss_affine_before], updates=updates_affine)
 
     get_affine_exhaustive_fn = theano.function([input_var], [loss_affine_exhaustive, loss_affine_exhaustive_before, predictions_exhaustive_degree])
     
@@ -297,11 +297,13 @@ def main(model='mlp', num_epochs=1):
                         weightsOfParams = lasagne.layers.get_all_param_values(network)
                         if i == 19:
                             print(weightsOfParams[0].reshape(batch_size, 10)[0])
-                        train_loss, train_loss_before, gradient_loss, _ = train_affine_fn(inputs)
+                        # train_loss, train_loss_before, gradient_loss, _ = train_affine_fn(inputs)
+                        train_loss, train_loss_before = train_affine_fn(inputs)
                         if i == 19:
                             print(train_loss_before.reshape(batch_size, 10)[0])
                             lasagne.layers.set_all_param_values(network, weightsOfParams)
-                            train_loss, train_loss_before, gradient_loss, _ = train_affine_fn(inputs)
+                            # train_loss, train_loss_before, gradient_loss, _ = train_affine_fn(inputs)
+                            train_loss, train_loss_before = train_affine_fn(inputs)
                             print(train_loss_before.reshape(batch_size, 10)[0])
                         #print(train_loss, targets[0])
                         #print(gradient_loss.shape, gradient_loss.reshape(-1, 10)[0])
@@ -324,7 +326,8 @@ def main(model='mlp', num_epochs=1):
                 affine_params_all_reshape = affine_params_all_reshape[train_arg_min, np.arange(train_arg_min.shape[0])]
                 print(affine_params_all_reshape.reshape(batch_size, 10)[0])
                 affine_params.set_value(affine_params_all_reshape)
-                final_loss_all, final_loss_before, _, transformed_image_res = train_affine_fn(inputs)
+                # final_loss_all, final_loss_before, _, transformed_image_res = train_affine_fn(inputs)
+                final_loss_all, final_loss_before = train_affine_fn(inputs)
                 affine_params_all_reshape = affine_params_all_reshape.reshape(batch_size, 10)
 
                 train_loss_before_all = np.min(train_loss_before_all, axis = 0)
