@@ -139,10 +139,11 @@ def main(model='mlp'):
     X_train, y_train, X_test, y_test = load_data("/mnistROT.npy", "/mnistROTLabel.npy", "/mnistROTTEST.npy", "/mnistROTLABELTEST.npy", "ROT_MNIST")
    
     X_train = extend_image(X_train, 40)
-    X_test = extend_image(X_test, 40)
+    X_test = extend_image(X_test, 40)[:2000]
+    y_test = y_test[:2000]
 
     # Prepare Theano variables for inputs and targets
-    nRotation = 32
+    nRotation = 16
     
     # The dimension would be (nRotation * n, w, h)
     input_var = T.tensor4('inputs')
