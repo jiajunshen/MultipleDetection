@@ -1,5 +1,5 @@
 import os
-os.environ['THEANO_FLAGS']='device=gpu0'
+os.environ['THEANO_FLAGS']='device=gpu1'
 import numpy as np
 np.random.seed(123)
 import lasagne
@@ -10,7 +10,7 @@ conv = lasagne.layers.Conv2DLayer
 pool = lasagne.layers.MaxPool2DLayer
 NUM_EPOCHS = 500
 BATCH_SIZE = 256
-LEARNING_RATE = 0.001
+LEARNING_RATE = 0.0001
 DIM = 60
 NUM_CLASSES = 10
 
@@ -26,7 +26,7 @@ def load_data_new():
     X_train = extend_image(X_train, DIM)
     X_test = extend_image(X_test, DIM)
     X_valid = X_train[:1000]
-    y_valid = y_valid[:1000]
+    y_valid = y_train[:1000]
     # reshape for convolutions
     X_train = X_train.reshape((X_train.shape[0], 1, DIM, DIM))
     X_valid = X_valid.reshape((X_valid.shape[0], 1, DIM, DIM))
@@ -49,7 +49,7 @@ def load_data_new():
         input_height=X_train.shape[2],
         input_width=X_train.shape[3],
         output_dim=10,)
-data = load_data()
+data = load_data_new()
 
 def build_model(input_width, input_height, output_dim,
                 batch_size=BATCH_SIZE):
@@ -161,7 +161,7 @@ try:
         test_accs += [test_acc]
         train_accs += [train_acc]
 
-        if (n+1) % 20 == 0:
+        if (n+1) % 200 == 0:
             new_lr = sh_lr.get_value() * 0.7
             print "New LR:", new_lr
             sh_lr.set_value(lasagne.utils.floatX(new_lr))

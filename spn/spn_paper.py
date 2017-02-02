@@ -1,5 +1,5 @@
 import os
-os.environ['THEANO_FLAGS']='device=gpu1'
+os.environ['THEANO_FLAGS']='device=gpu2'
 
 import numpy as np
 np.random.seed(123)
@@ -36,7 +36,7 @@ def build_model(input_var=None):
         nonlinearity=lasagne.nonlinearities.identity)
     
     # Transformer network
-    l_trans1 = lasagne.layers.TransformerLayer(l_in, loc_out, downsample_factor=2.0)
+    l_trans1 = lasagne.layers.TransformerLayer(l_in, loc_out, downsample_factor=1.0)
     print "Transformer network output shape: ", l_trans1.output_shape
     
     # Classification network
@@ -113,11 +113,11 @@ def main(model='mlp', num_epochs=500):
     y_train = np.array(y_train_final, dtype = np.int32)
     """
 
-    X_train = extend_image(X_train, DIM)
-    X_test = extend_image(X_test, DIM)
+    X_train = extend_image(X_train, DIM) / 255.0
+    X_test = extend_image(X_test, DIM) / 255.0
     #X_train, y_train, X_test, y_test = load_data("/cluttered_train_x.npy", "/cluttered_train_y.npy", "/cluttered_test_x.npy", "/cluttered_test_y.npy", dataset = "MNIST_CLUTTER")
     _, _, X_test_rotated, y_test_rotated = load_data("/mnistROT.npy", "/mnistROTLabel.npy", "/mnistROTTEST.npy", "/mnistROTLABELTEST.npy", "ROT_MNIST")
-    X_test_rotated = extend_image(X_test_rotated, DIM)
+    X_test_rotated = extend_image(X_test_rotated, DIM) / 255.0
 
     # Prepare Theano variables for inputs and targets
     input_var = T.tensor4('inputs')
@@ -126,6 +126,9 @@ def main(model='mlp', num_epochs=500):
     network, transformed_image, six_params = build_model(input_var)
     prediction = lasagne.layers.get_output(network, deterministic = False)
     prediction_eval = lasagne.layers.get_output(network, deterministic = True)
+    transformed_image_eval = lasagne.layers.get_output(transformed_image, deterministic = True)
+    six_params_eval = lasagne.layers.get_output(six_params, deterministic = True)
+
     loss = lasagne.objectives.categorical_crossentropy(prediction, target_var)
     loss = loss.mean()
 
@@ -135,7 +138,7 @@ def main(model='mlp', num_epochs=500):
     eval_acc = T.mean(T.eq(T.argmax(prediction_eval, axis = 1), target_var),
                       dtype=theano.config.floatX)
 
-    sh_lr = theano.shared(lasagne.utils.floatX(0.01))
+    sh_lr = theano.shared(lasagne.utils.floatX(0.00001))
  
     params = lasagne.layers.get_all_params(network, trainable = True)
     updates = lasagne.updates.adam(loss, params, learning_rate = sh_lr)
@@ -146,7 +149,7 @@ def main(model='mlp', num_epochs=500):
     print("Starting training...")
 
     for epoch in range(num_epochs):
-        if (epoch + 1) % 20 == 0:
+        if (epoch + 1) % 200 == 0:
             new_lr = sh_lr.get_value() * 0.7
             sh_lr.set_value(lasagne.utils.floatX(new_lr))
         # In each epoch, we do a full pass over the training data:

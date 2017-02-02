@@ -126,6 +126,10 @@ def main(model='mlp', num_epochs=500):
     network, transformed_image, six_params = build_model(input_var)
     prediction = lasagne.layers.get_output(network, deterministic = False)
     prediction_eval = lasagne.layers.get_output(network, deterministic = True)
+    
+    transformed_image_eval = lasagne.layers.get_output(transformed_image, deterministic = True)
+    six_params_eval = lasagne.layers.get_output(six_params, deterministic = True)
+
     loss = lasagne.objectives.categorical_crossentropy(prediction, target_var)
     loss = loss.mean()
 
