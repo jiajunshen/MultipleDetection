@@ -12,32 +12,32 @@ from lasagne.layers.dnn import Conv2DDNNLayer as conv
 from lasagne.layers.dnn import MaxPool2DDNNLayer as pool
 from dataPreparation import load_data
 
-DIM = 60
+DIM = 40
 
 def build_model(input_var=None):
     l_in = lasagne.layers.InputLayer(shape=(None, 1, DIM, DIM),
                                      input_var = input_var)
 
     # Localization network
-    b = np.zeros((2, 3), dtype=theano.config.floatX)
-    b[0, 0] = 1
-    b[1, 1] = 1
-    b = b.flatten()
+    #b = np.zeros((2, 3), dtype=theano.config.floatX)
+    #b[0, 0] = 1
+    #b[1, 1] = 1
+    #b = b.flatten()
     #loc_l1 = pool(l_in, pool_size=(2, 2))
-    loc_l2 = conv(
-        l_in, num_filters=20, filter_size=(5, 5), W=lasagne.init.HeUniform())
-    loc_l3 = pool(loc_l2, pool_size=(2, 2))
-    loc_l4 = conv(loc_l3, num_filters=20, filter_size=(5, 5), W=lasagne.init.HeUniform())
-    loc_l5 = pool(loc_l4, pool_size=(2, 2))
-    loc_l6 = lasagne.layers.DenseLayer(
-        loc_l5, num_units=50, W=lasagne.init.HeUniform('relu'))
-    loc_out = lasagne.layers.DenseLayer(
-        loc_l6, num_units=6, b=b, W=lasagne.init.Constant(0.0), 
-        nonlinearity=lasagne.nonlinearities.identity)
+    #loc_l2 = conv(
+    #    loc_l2, num_filters=20, filter_size=(5, 5), W=lasagne.init.HeUniform())
+    #loc_l3 = pool(loc_l2, pool_size=(2, 2))
+    #loc_l4 = conv(loc_l3, num_filters=20, filter_size=(5, 5), W=lasagne.init.HeUniform())
+    #loc_l5 = pool(loc_l4, pool_size=(2, 2))
+    #loc_l6 = lasagne.layers.DenseLayer(
+    #    loc_l5, num_units=50, W=lasagne.init.HeUniform('relu'))
+    #loc_out = lasagne.layers.DenseLayer(
+    #    loc_l6, num_units=6, b=b, W=lasagne.init.Constant(0.0), 
+    #    nonlinearity=lasagne.nonlinearities.identity)
     
     # Transformer network
-    l_trans1 = lasagne.layers.TransformerLayer(l_in, loc_out, downsample_factor=2.0)
-    print "Transformer network output shape: ", l_trans1.output_shape
+    #l_trans1 = lasagne.layers.TransformerLayer(l_in, loc_out, downsample_factor=2.0)
+    #print "Transformer network output shape: ", l_trans1.output_shape
     
     # Classification network
     class_l1 = conv(
@@ -56,6 +56,7 @@ def build_model(input_var=None):
         W=lasagne.init.GlorotUniform(),
     )
     class_l4 = pool(class_l3, pool_size=(2, 2))
+
     class_l5 = lasagne.layers.DenseLayer(
         lasagne.layers.dropout(class_l4,p=.5),
         num_units=256,
@@ -123,7 +124,7 @@ def main(model='mlp', num_epochs=500):
     target_var = T.ivector('targets')
 
     network, transformed_image, six_params = build_model(input_var)
-    prediction = lasagne.layers.get_output(network, deterministic = True)
+    prediction = lasagne.layers.get_output(network, deterministic = False)
     prediction_eval = lasagne.layers.get_output(network, deterministic = True)
     
     transformed_image_eval = lasagne.layers.get_output(transformed_image, deterministic = True)
