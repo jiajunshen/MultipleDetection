@@ -97,7 +97,7 @@ def extend_image(inputs, size = 40):
     return extended_images
 
 
-def main(model='mlp', num_epochs=2000):
+def main(model='mlp', num_epochs=1):
     # Load the dataset
     print("Loading data...")
     # num_per_class = 100
@@ -105,8 +105,8 @@ def main(model='mlp', num_epochs=2000):
     print("Using all the training data") 
     
     ## Load Data##
-    # X_train, y_train, X_test, y_test = load_data("/X_train_limited_100.npy", "/Y_train_limited_100.npy", "/X_test_deformed.npy", "/Y_test_deformed.npy")
-    X_train, y_train, X_test, y_test = load_data("/X_train.npy", "/Y_train.npy", "/X_test_deformed.npy", "/Y_test_deformed.npy")
+    X_train, y_train, X_test, y_test = load_data("/X_train_limited_100.npy", "/Y_train_limited_100.npy", "/X_test_deformed.npy", "/Y_test_deformed.npy")
+    # X_train, y_train, X_test, y_test = load_data("/X_train_limited_100.npy", "/Y_train_limited_100.npy", "/X_test.npy", "/Y_test.npy")
     
     X_train = extend_image(X_train, 40)
     X_test_all = extend_image(X_test, 40)
@@ -205,15 +205,12 @@ def main(model='mlp', num_epochs=2000):
 
     val_fn = theano.function([input_var, vanilla_target_var], test_acc)
     
-
-    # Finally, launch the training loop.
-    # We iterate over epochs:
+    #weightsOfParams = np.load("../data/mnist_CNN_params_drop_out_Chi_2017_Deformation_hinge_2000_script_run_0_em_new_epoch1900.npy")
+    #lasagne.layers.set_all_param_values(network, weightsOfParams)
     cached_deformation_matrix = np.array(np.zeros((X_train.shape[0], 10, 2 * 16)), dtype = np.float32)
-    weightsOfParams = np.load("../data/mnist_CNN_params_drop_out_Chi_2017_Deformation_hinge_2000_script_run_all_MNIST_em_new_epoch100.npy")
-    lasagne.layers.set_all_param_values(network, weightsOfParams)
-    for epoch in range(200, num_epochs):
+    for epoch in range(num_epochs):
         start_time = time.time()
-        if epoch % 100 == 0 or epoch + 1 == num_epochs:
+        if epoch % 50 == 0 or epoch + 1 == num_epochs:
             print ("Start Evaluating...")
             test_acc = 0
             test_batches = 0
@@ -231,12 +228,14 @@ def main(model='mlp', num_epochs=2000):
                     weightsOfParams = lasagne.layers.get_all_param_values(network)
                     train_loss, train_loss_before, final_transformed_images = train_affine_fn(inputs)
 
-                #np.save("./deformed_images.npy", final_transformed_images)
-                #np.save("./deformed_images_original.npy", inputs)
+                np.save("./deformed_images.npy", final_transformed_images)
+                np.save("./deformed_images_original.npy", inputs)
     
                 cached_deformation_matrix_test[index] = weightsOfParams[0].reshape((-1, 10, 2 * 16))
                 affine_test_batches += 1
                 print(affine_test_batches)
+                if affine_test_batches == 1:
+                    break
 
             for batch in iterate_minibatches(X_test, y_test, batch_size, shuffle = False):
                 inputs, targets, index = batch
@@ -255,50 +254,9 @@ def main(model='mlp', num_epochs=2000):
         train_batches = 0
         affine_train_batches = 0
 
-        if epoch % 200 == 0:
-            print("inside")
-            weightsOfParams = lasagne.layers.get_all_param_values(network)
-            batch_loss = 0
-            for batch in iterate_minibatches(X_train, y_train, batch_size, shuffle=False):
-                inputs, targets, index = batch
-                inputs = inputs.reshape((batch_size, 1, 40, 40))
-                
-                affine_params.set_value(np.array(np.zeros((batch_size * 10, 2 * 16)), dtype = np.float32))
-                final_transformed_images = None
-                for i in range(200):
-                    weightsOfParams = lasagne.layers.get_all_param_values(network)
-                    train_loss, train_loss_before, final_transformed_images = train_affine_fn(inputs)
-                # np.save("./deformed_images.npy", final_transformed_images)
-                # np.save("./deformed_images_original.npy", inputs)
-                cached_deformation_matrix[index] = weightsOfParams[0].reshape((-1, 10, 2 * 16))
-                affine_train_batches += 1
-                batch_loss += np.mean(train_loss_before)
-                print(affine_train_batches)
-                #if (affine_train_batches == 1):
-                #    print([[train_loss_before[i], targets[i]] for i in range(100)])
-            print(batch_loss / affine_train_batches)
-            print (time.time() - start_time)
-
-        if 1:
-            for batch in iterate_minibatches(X_train, y_train, batch_size, shuffle=True):
-                inputs, targets, index = batch
-                affine_params.set_value(cached_deformation_matrix[index].reshape((-1, 2 * 16)))
-                inputs = inputs.reshape((batch_size, 1, 40, 40))
-                train_loss_value, train_acc_value_1, train_acc_value_2 = train_model_fn(inputs, targets)
-                train_err += train_loss_value
-                train_acc_sum_1 += train_acc_value_1
-                train_acc_sum_2 += train_acc_value_2
-                train_batches += 1
-        # Then we print the results for this epoch:
-        print("Epoch {} of {} took {:.3f}s".format(
-            epoch + 1, num_epochs, time.time() - start_time))
-        print("  training loss:\t\t{:.6f}".format(train_err / train_batches))
-        print("  training acc 1:\t\t{:.6f}".format(train_acc_sum_1 / train_batches))
-        print("  training acc 2:\t\t{:.6f}".format(train_acc_sum_2 / train_batches))
-
-        if epoch % 100 == 0: 
-            weightsOfParams = lasagne.layers.get_all_param_values(network)
-            np.save("../data/mnist_CNN_params_drop_out_Chi_2017_Deformation_hinge_2000_script_run_all_MNIST_em_new_epoch%d.npy" %epoch, weightsOfParams)
+        #if epoch % 100 == 0: 
+        #    weightsOfParams = lasagne.layers.get_all_param_values(network)
+        #    np.save("../data/mnist_CNN_params_drop_out_Chi_2017_Deformation_hinge_2000_script_run_3_em_new_epoch%d.npy" %epoch, weightsOfParams)
 
 
 if __name__ == '__main__':
