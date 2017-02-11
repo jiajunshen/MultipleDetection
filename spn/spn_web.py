@@ -5,13 +5,14 @@ np.random.seed(123)
 import lasagne
 import theano
 import theano.tensor as T
+import cv2
 from dataPreparation import load_data
 conv = lasagne.layers.Conv2DLayer
 pool = lasagne.layers.MaxPool2DLayer
 NUM_EPOCHS = 500
 BATCH_SIZE = 256
 LEARNING_RATE = 0.0001
-DIM = 60
+DIM = 42
 NUM_CLASSES = 10
 
 def extend_image(inputs, size = 40):
@@ -21,16 +22,30 @@ def extend_image(inputs, size = 40):
 .shape[3]] = inputs
     return extended_images
 
+def rotateImage(image, angle):
+    if len(image.shape) == 3:
+        image = image[0]
+    image_center = tuple(np.array(image.shape)/2)
+    rot_mat = cv2.getRotationMatrix2D(image_center, angle, 1.0)
+    result = cv2.warpAffine(image, rot_mat, image.shape, flags=cv2.INTER_LINEAR)
+    return np.array(result[np.newaxis, :, :], dtype = np.float32)
+
 def load_data_new():
-    X_train, y_train, X_test, y_test = load_data("/mnistROT.npy", "/mnistROTLabel.npy", "/mnistROTTEST.npy", "/mnistROTLABELTEST.npy", "ROT_MNIST")
+    X_train, y_train, X_test, y_test = load_data("/X_train.npy", "/Y_train.npy", "/X_test.npy", "/Y_test.npy")
     X_train = extend_image(X_train, DIM)
     X_test = extend_image(X_test, DIM)
     X_valid = X_train[:1000]
     y_valid = y_train[:1000]
     # reshape for convolutions
     X_train = X_train.reshape((X_train.shape[0], 1, DIM, DIM))
+    angles = np.random.randint(low = -90, high = 90, size = X_train.shape[0])
+    X_train = np.array([rotateImage(X_train[i], angles[i]) for i in range(X_train.shape[0])], dtype = np.float32)
     X_valid = X_valid.reshape((X_valid.shape[0], 1, DIM, DIM))
+    angles = np.random.randint(low = -90, high = 90, size = X_valid.shape[0])
+    X_valid = np.array([rotateImage(X_valid[i], angles[i]) for i in range(X_valid.shape[0])], dtype = np.float32)
     X_test = X_test.reshape((X_test.shape[0], 1, DIM, DIM))
+    angles = np.random.randint(low = -90, high = 90, size = X_test.shape[0])
+    X_test = np.array([rotateImage(X_test[i], angles[i]) for i in range(X_test.shape[0])], dtype = np.float32)
     
     print "Train samples:", X_train.shape
     print "Validation samples:", X_valid.shape
@@ -95,7 +110,7 @@ def build_model(input_width, input_height, output_dim,
     class_l4 = pool(class_l3, pool_size=(2, 2))
     class_l5 = lasagne.layers.DenseLayer(
         class_l4,
-        num_units=256,
+        num_units=50,
         nonlinearity=lasagne.nonlinearities.rectify,
         W=ini,
     )

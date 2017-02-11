@@ -1,5 +1,5 @@
 import os
-os.environ['THEANO_FLAGS']='device=gpu0'
+os.environ['THEANO_FLAGS']='device=gpu1'
 
 import numpy as np
 np.random.seed(123)
@@ -28,10 +28,6 @@ def build_model(input_var=None):
                                      input_var = input_var)
 
     # Localization network
-    b = np.zeros((2, 3), dtype=theano.config.floatX)
-    b[0, 0] = 0.5
-    b[1, 1] = 0.5
-    b = b.flatten()
     loc_l2 = conv(
         l_in, num_filters=20, filter_size=(5, 5), W=lasagne.init.HeUniform())
     loc_l3 = pool(loc_l2, pool_size=(2, 2))
@@ -40,11 +36,11 @@ def build_model(input_var=None):
     loc_l6 = lasagne.layers.DenseLayer(
         loc_l5, num_units=50, W=lasagne.init.HeUniform('relu'))
     loc_out = lasagne.layers.DenseLayer(
-        loc_l6, num_units=6, b=b, W=lasagne.init.Constant(0.0), 
+        loc_l6, num_units=32, b=lasagne.init.Constant(0.0), W=lasagne.init.Constant(0.0), 
         nonlinearity=lasagne.nonlinearities.identity)
     
     # Transformer network
-    l_trans1 = lasagne.layers.TransformerLayer(l_in, loc_out, downsample_factor=1.0)
+    l_trans1 = lasagne.layers.TPSTransformerLayer(l_in, loc_out, downsample_factor=1.0)
     #print "Transformer network output shape: ", l_trans1.output_shape
     
     # Classification network
@@ -177,8 +173,8 @@ def main(model='mlp', num_epochs=500):
             train_err += err
             train_batches += 1
             if train_batches == 1:
-                np.save("./unrotated_image_train.npy", trans_img)
-                np.save("./original_image_train.npy", rotated_inputs)
+                np.save("./unrotated_image_train_tps.npy", trans_img)
+                np.save("./original_image_train_tps.npy", rotated_inputs)
 
         # Then we print the results for this epoch:
         print("Epoch {} of {} took {:.3f}s".format(
@@ -202,8 +198,8 @@ def main(model='mlp', num_epochs=500):
                 test_acc += acc
                 test_batches += 1
                 if test_batches == 1:
-                    np.save("./unrotated_image.npy", trans_img)
-                    np.save("./original_image.npy", rotated_inputs)
+                    np.save("./unrotated_image_tps.npy", trans_img)
+                    np.save("./original_image_tps.npy", rotated_inputs)
             print("Final results:")
             print("  test loss:\t\t\t{:.6f}".format(test_err / test_batches))
             print("  test accuracy:\t\t{:.2f} %".format(

@@ -1,5 +1,4 @@
 import os
-os.environ['THEANO_FLAGS']='device=gpu0'
 
 import numpy as np
 np.random.seed(123)
@@ -13,7 +12,7 @@ from lasagne.layers.dnn import MaxPool2DDNNLayer as pool
 from dataPreparation import load_data
 import cv2
 
-DIM = 40
+DIM = 42
 
 def rotateImage(image, angle):
     if len(image.shape) == 3:
@@ -32,13 +31,9 @@ def build_model(input_var=None):
     b[0, 0] = 0.5
     b[1, 1] = 0.5
     b = b.flatten()
-    loc_l2 = conv(
-        l_in, num_filters=20, filter_size=(5, 5), W=lasagne.init.HeUniform())
-    loc_l3 = pool(loc_l2, pool_size=(2, 2))
-    loc_l4 = conv(loc_l3, num_filters=20, filter_size=(5, 5), W=lasagne.init.HeUniform())
-    loc_l5 = pool(loc_l4, pool_size=(2, 2))
-    loc_l6 = lasagne.layers.DenseLayer(
-        loc_l5, num_units=50, W=lasagne.init.HeUniform('relu'))
+    loc_l2 = lasagne.layers.DenseLayer(l_in, num_units=32, W=lasagne.init.HeUniform())
+    loc_l4 = lasagne.layers.DenseLayer(loc_l2, num_units=32, W=lasagne.init.HeUniform())
+    loc_l6 = lasagne.layers.DenseLayer(loc_l4, num_units=32, W=lasagne.init.HeUniform())
     loc_out = lasagne.layers.DenseLayer(
         loc_l6, num_units=6, b=b, W=lasagne.init.Constant(0.0), 
         nonlinearity=lasagne.nonlinearities.identity)
@@ -51,7 +46,7 @@ def build_model(input_var=None):
     class_l1 = conv(
         l_trans1,
         num_filters=32,
-        filter_size=(5, 5),
+        filter_size=(9, 9),
         nonlinearity=lasagne.nonlinearities.rectify,
         W=lasagne.init.GlorotUniform(),
     )
@@ -59,26 +54,20 @@ def build_model(input_var=None):
     class_l3 = conv(
         class_l2,
         num_filters=32,
-        filter_size=(5, 5),
+        filter_size=(7, 7),
         nonlinearity=lasagne.nonlinearities.rectify,
         W=lasagne.init.GlorotUniform(),
     )
     class_l4 = pool(class_l3, pool_size=(2, 2))
 
-    class_l5 = lasagne.layers.DenseLayer(
-        lasagne.layers.dropout(class_l4,p=.5),
-        num_units=256,
-        nonlinearity=lasagne.nonlinearities.rectify,
-    )
-
     l_out = lasagne.layers.DenseLayer(
-        lasagne.layers.dropout(class_l5,p=.5),
+        class_l4,
         num_units=10,
         nonlinearity=lasagne.nonlinearities.softmax,
     )
 
     return l_out, l_trans1, loc_out
-    # return l_out, l_out, loc_out
+    #return l_out, l_out, l_out
 
 def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
     assert len(inputs) == len(targets)
@@ -100,7 +89,7 @@ def extend_image(inputs, size = 40):
 .shape[3]] = inputs
     return extended_images
 
-def main(model='mlp', num_epochs=500):
+def main(model='mlp', num_epochs=100):
     # Load the dataset
     print("Loading data...")
     # num_per_class = 100
@@ -152,7 +141,8 @@ def main(model='mlp', num_epochs=500):
     sh_lr = theano.shared(lasagne.utils.floatX(0.01))
  
     params = lasagne.layers.get_all_params(network, trainable = True)
-    updates = lasagne.updates.adagrad(loss, params, learning_rate = 0.001)
+    #updates = lasagne.updates.adagrad(loss, params, learning_rate = 0.001)
+    updates = lasagne.updates.momentum(loss, params, learning_rate = 0.01, momentum = 0.9)
 
     train_fn = theano.function([input_var, target_var], [loss,transformed_image_eval], updates = updates)
     eval_fn = theano.function([input_var, target_var], [eval_loss, eval_acc, transformed_image_eval, six_params_eval])
@@ -169,16 +159,16 @@ def main(model='mlp', num_epochs=500):
         start_time = time.time()
         for batch in iterate_minibatches(X_train, y_train, 100, shuffle=True):
             inputs, targets = batch
-            angles = np.random.randint(low = -90, high = 90, size = 100)
+            angles = np.random.randint(low = -60, high = 60, size = 100)
             rotated_inputs = np.array([rotateImage(inputs[i], angles[i]) for i in range(100)], dtype = np.float32)
             
             #err, trans_img = train_fn(inputs, targets)
             err, trans_img = train_fn(rotated_inputs, targets)
             train_err += err
             train_batches += 1
-            if train_batches == 1:
-                np.save("./unrotated_image_train.npy", trans_img)
-                np.save("./original_image_train.npy", rotated_inputs)
+            if train_batches == 1 and epoch % 5 == 0:
+                np.save("./unrotated_image_train_90.npy", trans_img)
+                np.save("./original_image_train_90.npy", rotated_inputs)
 
         # Then we print the results for this epoch:
         print("Epoch {} of {} took {:.3f}s".format(
@@ -193,17 +183,17 @@ def main(model='mlp', num_epochs=500):
             test_err = 0
             test_acc = 0
             test_batches = 0
-            for batch in iterate_minibatches(X_test, y_test, 500, shuffle=True):
+            for batch in iterate_minibatches(X_test, y_test, 500, shuffle=False):
                 inputs, targets = batch
-                angles = np.random.randint(low = -90, high = 90, size = 500)
+                angles = np.random.randint(low = -60, high = 60, size = 500)
                 rotated_inputs = np.array([rotateImage(inputs[i], angles[i]) for i in range(500)], dtype = np.float32)
                 err, acc, trans_img, six_param = eval_fn(rotated_inputs, targets)
                 test_err += err
                 test_acc += acc
                 test_batches += 1
-                if test_batches == 1:
-                    np.save("./unrotated_image.npy", trans_img)
-                    np.save("./original_image.npy", rotated_inputs)
+                if test_batches == 1 and epoch % 5 == 0:
+                    np.save("./unrotated_image_90.npy", trans_img)
+                    np.save("./original_image_90.npy", rotated_inputs)
             print("Final results:")
             print("  test loss:\t\t\t{:.6f}".format(test_err / test_batches))
             print("  test accuracy:\t\t{:.2f} %".format(
