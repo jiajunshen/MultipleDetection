@@ -41,8 +41,8 @@ import skimage.transform
 from collections import OrderedDict
 
 batch_size = 100
-saved_weights_dir = '/project/evtimov/jiajun/MultipleDetection/cifar10_em_svm_hinge_100/cifar10_theano_train_hinge_adam/model_step25.npy'
-train_dir = './cifar10_theano_train_adam'
+saved_weights_dir = '/project/evtimov/jiajun/MultipleDetection/cifar10_em_svm_hinge_100/cifar10_theano_train_hinge_adam_new/model_step25.npy'
+train_dir = './cifar10_theano_train_adam_test'
 max_epochs = 2000
 validation = False
 validation_model = ''
@@ -102,7 +102,7 @@ def train():
         updates_affine[param] = param - 0.02 * grad
 
 
-    updates_model = lasagne.updates.adam(loss, params, learning_rate=0.001)
+    updates_model = lasagne.updates.adam(loss, model_params, learning_rate=0.001)
 
     test_prediction = lasagne.layers.get_output(cnn_model, deterministic=True)
 
@@ -138,41 +138,50 @@ def train():
     X_test = cifar10_data.sample_test
 
     for epoch in xrange(max_epochs):
-        
         start_time = time.time() 
-        if epoch % 50 == 0 or epoch + 1 == max_epochs:
-            print("Start Evaluating %d" % epoch)
-            total_acc_count = 0
-            total_count = 0
-            affine_test_batches = 0
-            if epoch + 1 == max_epochs:
-                X_test = cifar10_data.test
-            X_test._cached_deformation = np.array(np.zeros((X_test._num_examples, 10, 2 * 16)), dtype = np.float32)
-            # Find the best deformation
-            test_image, test_label, start = X_test.next_eval_batch(batch_size)
+        if 1: 
+            if epoch % 50 == 0 or epoch + 1 == max_epochs:
+                print("Start Evaluating %d" % epoch)
+                total_acc_count = 0
+                total_count = 0
+                affine_test_batches = 0
+                if epoch + 1 == max_epochs:
+                    X_test = cifar10_data.test
+                X_test._cached_deformation = np.array(np.zeros((X_test._num_examples, 10, 2 * 16)), dtype = np.float32)
+                # Find the best deformation
+                if 1:
+                    test_image, test_label, start = X_test.next_eval_batch(batch_size)
 
-            while(test_image is not None):
-                affine_params.set_value(np.array(np.zeros((batch_size * 10, 2 * 16)), dtype = np.float32))
-                for i in range(200):
-                    weightsOfParams = lasagne.layers.get_all_param_values(cnn_model)
-                    train_loss, train_loss_before, final_transformed_images = train_affine_fn(test_image)
-                X_test._cached_deformation[start:start+batch_size] = weightsOfParams[0].reshape((-1, 10, 2 * 16))
-                affine_test_batches += 1
-                print(affine_test_batches)
+                    while(test_image is not None):
+                        affine_params.set_value(np.array(np.zeros((batch_size * 10, 2 * 16)), dtype = np.float32))
+                        for i in range(200):
+                            weightsOfParams = lasagne.layers.get_all_param_values(cnn_model)
+                            train_loss, train_loss_before, final_transformed_images = train_affine_fn(test_image)
+                        X_test._cached_deformation[start:start+batch_size] = weightsOfParams[0].reshape((-1, 10, 2 * 16))
+                        affine_test_batches += 1
+                        print(affine_test_batches)
+                        test_image, test_label, start = X_test.next_eval_batch(batch_size)
+
+                # Start Evaluation after finding the best deformation
                 test_image, test_label, start = X_test.next_eval_batch(batch_size)
+                while(test_image is not None):
+                    affine_params.set_value(X_test._cached_deformation[start:start+batch_size].reshape(-1, 2 * 16))
+                    acc = val_fn(test_image, test_label)
+                    total_acc_count += acc * test_image.shape[0]
+                    total_count += test_image.shape[0]
+                    test_image, test_label, start = X_test.next_eval_batch(batch_size)
 
-            # Start Evaluation after finding the best deformation
-            test_image, test_label, start = X_test.next_eval_batch(batch_size)
-            while(test_image is not None):
-                affine_params.set_value(X_test._cached_deformation[start:start+batch_size].reshape(-1, 2 * 16))
-                acc = val_fn(test_image, test_label)
-                total_acc_count += acc * test_image.shape[0]
-                total_count += test_image.shape[0]
-                test_image, test_label, start = X_test.next_eval_batch(batch_size)
-
-            print("Final Results:")
-            print("  test accuracy:\t\t{:.2f} %".format(
-                  float(total_acc_count / total_count) * 100))
+                print("Final Results:")
+                print("  test accuracy:\t\t{:.2f} %".format(
+                      float(total_acc_count / total_count) * 100))
+        if 0:
+            #eval_image = np.load("./transformed_image.npy").reshape(100, 10, 3, 32, 32)[:,0]
+            eval_image = np.load("./original_image.npy").reshape(100, 3, 32, 32)
+            targets = np.load("./target.npy")
+            affine_params.set_value(np.array(np.zeros((batch_size * 10, 2 * 16)), dtype = np.float32))
+            acc = val_fn(eval_image, np.array(targets, dtype = np.int32))
+            print(acc)
+            
 
         print("Start training...")
         train_err = 0
@@ -182,7 +191,7 @@ def train():
         loss_total = 0
 
         start = -1
-        if epoch % 50 == 0:
+        if epoch % 100 == 0:
             affine_train_batches = 0
             print("start finding the best affine transformation") 
             batch_loss = 0
@@ -195,6 +204,15 @@ def train():
                     train_loss, train_loss_before, final_transformed_images = train_affine_fn(train_image)
                 cifar10_data.train._cached_deformation[start:start+batch_size] = weightsOfParams[0].reshape((-1, 10, 2 * 16))
                 affine_train_batches += 1
+                if affine_train_batches == 1:
+                    train_loss_value, train_acc_value_1, train_acc_value_2 = train_fn(train_image, train_label)
+                    print(train_loss_value)
+                    print(train_acc_value_1)
+                    print(train_acc_value_2)
+                    np.save("./transformed_image.npy", final_transformed_images)
+                    np.save("./original_image.npy", train_image)
+                    np.save("./target.npy", train_label)
+                    print(train_label)
                 batch_loss += np.mean(train_loss_before)
                 print(affine_train_batches)
             
@@ -207,6 +225,7 @@ def train():
         if 1:
             while(start!=0 or train_batches==1):
                 train_image, train_label, start = cifar10_data.train.next_batch(batch_size)
+                #print(train_label)
                 affine_params.set_value(cifar10_data.train._cached_deformation[start:start+batch_size].reshape(-1, 2 * 16))
                 train_loss_value, train_acc_value_1, train_acc_value_2 = train_fn(train_image, train_label)
                 train_err += train_loss_value
@@ -236,7 +255,7 @@ def train():
             latest_model_file.close()
 
 
-def main(argv=None):  # pylint: disable=unused-argument
+def main(argv=None):
     train()
 
 

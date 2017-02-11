@@ -28,7 +28,7 @@ import time
 import numpy as np
 from six.moves import xrange  # pylint: disable=redefined-builtin
 
-import cifar10
+import cifar10_regularize_01_01 as cifar10
 import cifar10_input
 
 import theano
@@ -41,8 +41,8 @@ import skimage.transform
 from collections import OrderedDict
 
 batch_size = 100
-saved_weights_dir = '/project/evtimov/jiajun/MultipleDetection/cifar10_em_svm_hinge_100/cifar10_theano_train_hinge_adam/model_step25.npy'
-train_dir = './cifar10_theano_train_adam'
+saved_weights_dir = '/project/evtimov/jiajun/MultipleDetection/cifar10_em_svm_hinge_100/cifar10_theano_train_hinge_adam_new/model_step25.npy'
+train_dir = './cifar10_theano_train_adam_regularize_01_01'
 max_epochs = 2000
 validation = False
 validation_model = ''
@@ -102,7 +102,7 @@ def train():
         updates_affine[param] = param - 0.02 * grad
 
 
-    updates_model = lasagne.updates.adam(loss, params, learning_rate=0.001)
+    updates_model = lasagne.updates.adam(loss, model_params, learning_rate=0.001)
 
     test_prediction = lasagne.layers.get_output(cnn_model, deterministic=True)
 
@@ -182,7 +182,7 @@ def train():
         loss_total = 0
 
         start = -1
-        if epoch % 50 == 0:
+        if epoch % 200 == 0:
             affine_train_batches = 0
             print("start finding the best affine transformation") 
             batch_loss = 0
@@ -222,7 +222,7 @@ def train():
         print("  training acc 1:\t\t{:.6f}".format(train_acc_sum_1 / train_batches))
         print("  training acc 2:\t\t{:.6f}".format(train_acc_sum_2 / train_batches))
 
-        if epoch % 500 == 0 or (epoch + 1) == max_epochs:
+        if epoch % 100 == 0 or (epoch + 1) == max_epochs:
             checkpoint_path = os.path.join(train_dir, 'model_epoch%d.npy' % epoch)
             weightsOfParams = lasagne.layers.get_all_param_values(cnn_model)
             np.save(checkpoint_path, weightsOfParams)

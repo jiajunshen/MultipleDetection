@@ -150,7 +150,7 @@ def build_cnn(input_var=None, batch_size = None):
     output_selected = SelectLayer(output_layer, 10)
 
     # Weight Decay
-    weight_decay_layers = {input_transformed:5.0, output_layer: 0.0}
+    weight_decay_layers = {input_transformed:0.1, output_layer: 0.02}
     l2_penalty = regularize_layer_params_weighted(weight_decay_layers, l2)
 
     return output_layer, output_selected, l2_penalty, output_transformed

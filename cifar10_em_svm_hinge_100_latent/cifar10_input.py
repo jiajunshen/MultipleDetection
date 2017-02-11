@@ -109,6 +109,7 @@ class DataSet(object):
         self._index_in_epoch = 0
         self._index_in_eval_epoch = 0
         self._distortion = distortion
+        #self.permutation()
 
     @property
     def images(self):
@@ -122,18 +123,21 @@ class DataSet(object):
     def num_examples(self):
         return self._num_examples
 
+    def permutation(self):
+        perm = np.arange(self._num_examples)
+        np.random.shuffle(perm)
+        self._images = self._images[perm]
+        self._labels = self._labels[perm]
+        if self._cached_deformation is not None:
+            self._cached_deformation = self._cached_deformation[perm]
+
     def next_batch(self, batch_size, image_size=IMAGE_SIZE):
         start = self._index_in_epoch
         self._index_in_epoch += batch_size
 
-        if self._index_in_epoch > NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN:
+        if self._index_in_epoch > self._num_examples:
             # Shuffle the data
-            perm = np.arange(self._num_examples)
-            np.random.shuffle(perm)
-            self._images = self._images[perm]
-            self._labels = self._labels[perm]
-            if self._cached_deformation != None:
-                self._cached_deformation = self._cached_deformation[perm]
+            self.permutation()
             start = 0
             self._index_in_epoch = batch_size
         end = self._index_in_epoch
@@ -142,10 +146,13 @@ class DataSet(object):
                self._labels[start:end],\
                start,
 
+    def reset(self):
+        self._index_in_epoch = 0
+
     def next_eval_batch(self, batch_size, image_size=IMAGE_SIZE, distort=False):
         start = self._index_in_eval_epoch
         self._index_in_eval_epoch += batch_size
-        if start >= NUM_EXAMPLES_PER_EPOCH_FOR_EVAL:
+        if start >= self._num_examples:
             self._index_in_eval_epoch = 0
             return None, None, None
         else:
@@ -154,7 +161,7 @@ class DataSet(object):
             #standardized_image = per_image_standardization(resize_image)
             #return np.array(standardized_image, dtype=np.float32), self._labels[start:end]
             return self._images[start:end],\
-                   self._labels[start:end],
+                   self._labels[start:end],\
                    start
             
     
@@ -167,12 +174,16 @@ def read_data_sets(data_dir, distortion=True, dtype=np.float32):
     train_images_list = []
     train_labels_list = []
 
-    for i in range(10):
-        train_images_list.append(train_images[train_labels == i][:1000])
-        train_labels_list += [i] * 1000
+    #for i in range(10):
+    #    train_images_list.append(train_images[train_labels == i][:1000])
+    #    train_labels_list += [i] * 1000
     index = np.arange(10000)
-    train_images = np.vstack(train_images_list)[index]
-    train_labels = np.array(train_labels_list, dtype = np.int32)[index]
+    np.random.shuffle(index)
+    #train_images = np.vstack(train_images_list)[index]
+    #train_labels = np.array(train_labels_list, dtype = np.int32)[index]
+
+    train_images = train_images[index]
+    train_labels = train_labels[index]
 
     print(train_images.shape)
     print(train_labels.shape)
@@ -180,12 +191,13 @@ def read_data_sets(data_dir, distortion=True, dtype=np.float32):
     test_images = np.array(np.load(os.path.join(data_dir, "cifar10TestingData.npy")).reshape(10000, 3, 32, 32), dtype=dtype)
     test_labels = np.load(os.path.join(data_dir, "cifar10TestingDataLabel.npy"))
 
-    train = DataSet(train_images, train_labels, distortion=distortion)
+    train = DataSet(train_images[:200], train_labels[:200], distortion=distortion)
     test = DataSet(test_images, test_labels, test=True)
+    sample_test = DataSet(test_images[:2000], test_labels[:2000], test=True)
 
-    Datasets = collections.namedtuple('Datasets', ['train', 'test'])
+    Datasets = collections.namedtuple('Datasets', ['train', 'test', 'sample_test'])
 
-    return Datasets(train = train, test = test)
+    return Datasets(train = train, test = test, sample_test = sample_test)
 
 def load_cifar10():
     return read_data_sets(os.environ['CIFAR10_DIR'])

@@ -28,7 +28,7 @@ import time
 import numpy as np
 from six.moves import xrange  # pylint: disable=redefined-builtin
 
-import cifar10
+import cifar10_9_ref as cifar10
 import cifar10_input
 
 import theano
@@ -41,8 +41,8 @@ import skimage.transform
 from collections import OrderedDict
 
 batch_size = 100
-saved_weights_dir = '/project/evtimov/jiajun/MultipleDetection/cifar10_em_svm_hinge_100/cifar10_theano_train_hinge_adam/model_step25.npy'
-train_dir = './cifar10_theano_train_adam'
+saved_weights_dir = '/project/evtimov/jiajun/MultipleDetection/cifar10_em_svm_hinge_100/cifar10_theano_train_hinge_adam_new/model_step25.npy'
+train_dir = './cifar10_theano_train_adam_9_ref'
 max_epochs = 2000
 validation = False
 validation_model = ''
@@ -57,7 +57,7 @@ def train():
 
     saved_weights = np.load(saved_weights_dir)
 
-    deformation_matrix_matrix = np.array(np.zeros((batch_size * 10, 2 * 16)), dtype = np.float32)
+    deformation_matrix_matrix = np.array(np.zeros((batch_size * 10, 2 * 9)), dtype = np.float32)
 
     network_saved_weights = np.array([deformation_matrix_matrix, ] + [saved_weights[i] for i in range(saved_weights.shape[0])])
 
@@ -102,7 +102,7 @@ def train():
         updates_affine[param] = param - 0.02 * grad
 
 
-    updates_model = lasagne.updates.adam(loss, params, learning_rate=0.001)
+    updates_model = lasagne.updates.adam(loss, model_params, learning_rate=0.001)
 
     test_prediction = lasagne.layers.get_output(cnn_model, deterministic=True)
 
@@ -133,7 +133,7 @@ def train():
 
     cifar10_data = cifar10_input.load_cifar10()
 
-    cifar10_data.train._cached_deformation = np.array(np.zeros((cifar10_data.train._num_examples, 10, 2 * 16)),dtype = np.float32)
+    cifar10_data.train._cached_deformation = np.array(np.zeros((cifar10_data.train._num_examples, 10, 2 * 9)),dtype = np.float32)
 
     X_test = cifar10_data.sample_test
 
@@ -147,16 +147,16 @@ def train():
             affine_test_batches = 0
             if epoch + 1 == max_epochs:
                 X_test = cifar10_data.test
-            X_test._cached_deformation = np.array(np.zeros((X_test._num_examples, 10, 2 * 16)), dtype = np.float32)
+            X_test._cached_deformation = np.array(np.zeros((X_test._num_examples, 10, 2 * 9)), dtype = np.float32)
             # Find the best deformation
             test_image, test_label, start = X_test.next_eval_batch(batch_size)
 
             while(test_image is not None):
-                affine_params.set_value(np.array(np.zeros((batch_size * 10, 2 * 16)), dtype = np.float32))
+                affine_params.set_value(np.array(np.zeros((batch_size * 10, 2 * 9)), dtype = np.float32))
                 for i in range(200):
                     weightsOfParams = lasagne.layers.get_all_param_values(cnn_model)
                     train_loss, train_loss_before, final_transformed_images = train_affine_fn(test_image)
-                X_test._cached_deformation[start:start+batch_size] = weightsOfParams[0].reshape((-1, 10, 2 * 16))
+                X_test._cached_deformation[start:start+batch_size] = weightsOfParams[0].reshape((-1, 10, 2 * 9))
                 affine_test_batches += 1
                 print(affine_test_batches)
                 test_image, test_label, start = X_test.next_eval_batch(batch_size)
@@ -164,7 +164,7 @@ def train():
             # Start Evaluation after finding the best deformation
             test_image, test_label, start = X_test.next_eval_batch(batch_size)
             while(test_image is not None):
-                affine_params.set_value(X_test._cached_deformation[start:start+batch_size].reshape(-1, 2 * 16))
+                affine_params.set_value(X_test._cached_deformation[start:start+batch_size].reshape(-1, 2 * 9))
                 acc = val_fn(test_image, test_label)
                 total_acc_count += acc * test_image.shape[0]
                 total_count += test_image.shape[0]
@@ -182,18 +182,18 @@ def train():
         loss_total = 0
 
         start = -1
-        if epoch % 50 == 0:
+        if epoch % 200 == 0:
             affine_train_batches = 0
             print("start finding the best affine transformation") 
             batch_loss = 0
             while(start!=0 or affine_train_batches==1):
                 train_image, train_label, start = cifar10_data.train.next_batch(batch_size)
-                affine_params.set_value(np.array(np.zeros((batch_size * 10, 2 * 16)), dtype = np.float32))
+                affine_params.set_value(np.array(np.zeros((batch_size * 10, 2 * 9)), dtype = np.float32))
                 final_transformed_images = None
                 for i in range(200):
                     weightsOfParams = lasagne.layers.get_all_param_values(cnn_model)
                     train_loss, train_loss_before, final_transformed_images = train_affine_fn(train_image)
-                cifar10_data.train._cached_deformation[start:start+batch_size] = weightsOfParams[0].reshape((-1, 10, 2 * 16))
+                cifar10_data.train._cached_deformation[start:start+batch_size] = weightsOfParams[0].reshape((-1, 10, 2 * 9))
                 affine_train_batches += 1
                 batch_loss += np.mean(train_loss_before)
                 print(affine_train_batches)
@@ -207,7 +207,7 @@ def train():
         if 1:
             while(start!=0 or train_batches==1):
                 train_image, train_label, start = cifar10_data.train.next_batch(batch_size)
-                affine_params.set_value(cifar10_data.train._cached_deformation[start:start+batch_size].reshape(-1, 2 * 16))
+                affine_params.set_value(cifar10_data.train._cached_deformation[start:start+batch_size].reshape(-1, 2 * 9))
                 train_loss_value, train_acc_value_1, train_acc_value_2 = train_fn(train_image, train_label)
                 train_err += train_loss_value
                 train_acc_sum_1 += train_acc_value_1
@@ -222,7 +222,7 @@ def train():
         print("  training acc 1:\t\t{:.6f}".format(train_acc_sum_1 / train_batches))
         print("  training acc 2:\t\t{:.6f}".format(train_acc_sum_2 / train_batches))
 
-        if epoch % 500 == 0 or (epoch + 1) == max_epochs:
+        if epoch % 100 == 0 or (epoch + 1) == max_epochs:
             checkpoint_path = os.path.join(train_dir, 'model_epoch%d.npy' % epoch)
             weightsOfParams = lasagne.layers.get_all_param_values(cnn_model)
             np.save(checkpoint_path, weightsOfParams)
