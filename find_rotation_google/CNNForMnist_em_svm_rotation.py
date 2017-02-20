@@ -197,7 +197,9 @@ def main(model='mlp', num_epochs=2000):
         updates_affine[param] = param - 1000 * grad
 
     
-    updates_model = lasagne.updates.adagrad(loss, model_params, learning_rate = 0.01)
+    #updates_model = lasagne.updates.adagrad(loss, model_params, learning_rate = 0.01)
+
+    updates_model = lasagne.updates.sgd(loss, params, learning_rate=0.00001)
 
     test_prediction = lasagne.layers.get_output(network, deterministic=True)
 
@@ -214,7 +216,6 @@ def main(model='mlp', num_epochs=2000):
     train_affine_fn = theano.function([input_var], [loss_affine, loss_affine_before], updates=updates_affine)
 
     val_fn = theano.function([input_var, vanilla_target_var], test_acc)
-    
 
     # Finally, launch the training loop.
     # We iterate over epochs:
