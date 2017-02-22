@@ -132,11 +132,11 @@ def main(model='mlp', num_epochs=2000):
     
     X_train = extend_images(X_train, 227)
     X_test_all = extend_images(X_test, 227)
-    X_test = extend_images(X_test, 227)[:200]
+    X_test = extend_images(X_test, 227)[:20]
 
     y_train = y_train
     y_test_all = y_test[:]
-    y_test = y_test[:200]
+    y_test = y_test[:20]
 
 
     ## Define Batch Size ##
@@ -154,7 +154,7 @@ def main(model='mlp', num_epochs=2000):
     network, network_for_rotation, weight_decay, network_transformed = build_cnn(input_var, batch_size)
     
     # saved_weights = np.load("../data/mnist_Chi_dec_100.npy")
-    saved_weights = np.load("/var/tmp/result.npy")
+    saved_weights = np.load("../data/curet_test_hinge_epoch_400_2pool_10_classes.npy")
 
     affine_matrix_matrix = np.array(np.zeros((batch_size * 10,)), dtype = np.float32)
     
@@ -278,7 +278,6 @@ def main(model='mlp', num_epochs=2000):
                 acc = val_fn(inputs, targets)
                 test_acc += acc
                 test_batches += 1
-
             print("Final results:")
             print("  test accuracy:\t\t{:.2f} %".format(
                 test_acc / test_batches * 100))
@@ -356,7 +355,7 @@ def main(model='mlp', num_epochs=2000):
         
         if epoch % 20 == 0:
             weightsOfParams = lasagne.layers.get_all_param_values(network)
-            np.save("/var/tmp/Curet_CNN_Hinge_epoch_%d_2pool_8rotation_400_epoch_10_classes.npy" %epoch, weightsOfParams)
+            np.save("../data/Curet_CNN_Hinge_epoch_%d_2pool_8rotation_400_epoch_10_classes.npy" %epoch, weightsOfParams)
 
         
 
