@@ -206,7 +206,10 @@ def main(model='mlp', num_epochs=2000):
         updates_affine[param] = param - 1000 * grad
 
     
-    updates_model = lasagne.updates.adagrad(loss, model_params, learning_rate = 0.01)
+    updates_model = lasagne.updates.adagrad(loss, model_params, learning_rate = 0.001)
+    
+    #updates_model = lasagne.updates.nesterov_momentum(
+    #         loss, params, learning_rate=learning_rate, momentum=0.9)
 
     test_prediction = lasagne.layers.get_output(network, deterministic=True)
 

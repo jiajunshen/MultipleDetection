@@ -152,7 +152,7 @@ def main(model='mlp', num_epochs=2000):
     network, network_for_rotation, weight_decay, network_transformed = build_cnn(input_var, batch_size)
     
     # saved_weights = np.load("../data/mnist_Chi_dec_100.npy")
-    saved_weights = np.load("/var/tmp/result.npy")
+    saved_weights = np.load("../data/curet_test_hinge_epoch_250_2pool_10_classes.npy")
 
     affine_matrix_matrix = np.array(np.zeros((batch_size * 10,)), dtype = np.float32)
     
@@ -350,7 +350,7 @@ def main(model='mlp', num_epochs=2000):
         
         if epoch % 20 == 0:
             weightsOfParams = lasagne.layers.get_all_param_values(network)
-            np.save("/var/tmp/Curet_CNN_Hinge_epoch_%d_2pool_8rotation_400_epoch_10_classes.npy" %epoch, weightsOfParams)
+            np.save("../data/10_run_Curet_CNN_Hinge_epoch_%d_2pool_8rotation_400_epoch_10_classes.npy" %epoch, weightsOfParams)
 
         
 

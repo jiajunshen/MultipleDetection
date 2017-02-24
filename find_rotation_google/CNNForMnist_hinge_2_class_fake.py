@@ -119,6 +119,11 @@ def main(model='mlp', num_epochs=3000):
     print("Using %d per class" % num_per_class) 
     
     X_train, y_train, X_test, y_test = load_data("/X_train.npy", "/Y_train.npy", "/X_test.npy", "/Y_test.npy")
+    
+    X_train, y_train, X_test, y_test = load_data("/X_train_3_classes.npy", "/Y_train_3_classes.npy", "/X_test_3_classes.npy", "/Y_test_3_classes.npy")
+
+    y_train[y_train == 2] = 0
+    y_test[y_test == 2] = 0
 
     print(X_train.shape, y_train.shape, X_test.shape, y_test.shape)
 
@@ -220,7 +225,7 @@ def main(model='mlp', num_epochs=3000):
     #np.save("../data/mnist_CNN_params_sigmoid.npy", weightsOfParams)
     #np.save("../data/mnist_CNN_params.npy", weightsOfParams)
     #np.save("../data/mnist_CNN_params_drop_out_semi_Chi_Dec7.npy", weightsOfParams)
-    np.save("../data/google_car_CNN_params_drop_out_Chi_2017_hinge.npy", weightsOfParams)
+    np.save("../data/google_car_CNN_params_drop_out_Chi_2017_hinge_class_2_fake.npy", weightsOfParams)
     #np.save("../data/mnist_CNN_params_For_No_Bias_experiment_out.npy", weightsOfParams)
 
 

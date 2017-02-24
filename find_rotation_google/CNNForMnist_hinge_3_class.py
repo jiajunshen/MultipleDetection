@@ -14,6 +14,7 @@ from lasagne.layers import BatchNormLayer
 # from lasagne.layers import MaxPool2DLayer
 from dataPreparation import load_data
 from lasagne.utils import as_theano_expression
+from lasagne.regularization import regularize_layer_params_weighted, l2
 
 def binary_hinge_loss(predictions, targets, delta=1, log_odds=True,
                       binary=True):
@@ -77,7 +78,7 @@ def build_cnn(input_var=None):
     network = BatchNormLayer(network)
 
     # A fully-connected layer of 256 units with 50% dropout on its inputs:
-    network = lasagne.layers.DenseLayer(
+    fc1   = lasagne.layers.DenseLayer(
             lasagne.layers.dropout(network, p=.5),
             #network,
             num_units=128,
@@ -86,16 +87,18 @@ def build_cnn(input_var=None):
             )
 
     # And, finally, the 10-unit output layer with 50% dropout on its inputs:
-    network = lasagne.layers.DenseLayer(
-            lasagne.layers.dropout(network, p=.5),
+    fc2   = lasagne.layers.DenseLayer(
+            lasagne.layers.dropout(fc1, p=.5),
             #network,
-            num_units=1,
+            num_units=3,
             # nonlinearity=lasagne.nonlinearities.rectify,
             # nonlinearity=lasagne.nonlinearities.sigmoid
             nonlinearity = lasagne.nonlinearities.identity
             )
+    weight_decay_layers = {fc1:0.00, fc2:0.00}
 
-    return network
+    l2_penalty = regularize_layer_params_weighted(weight_decay_layers, l2)
+    return fc2, l2_penalty
 
 
 
@@ -118,24 +121,24 @@ def main(model='mlp', num_epochs=3000):
     num_per_class = 100
     print("Using %d per class" % num_per_class) 
     
-    X_train, y_train, X_test, y_test = load_data("/X_train.npy", "/Y_train.npy", "/X_test.npy", "/Y_test.npy")
+    X_train, y_train, X_test, y_test = load_data("/X_train_3_classes.npy", "/Y_train_3_classes.npy", "/X_test_3_classes.npy", "/Y_test_3_classes.npy")
 
     print(X_train.shape, y_train.shape, X_test.shape, y_test.shape)
 
     # Prepare Theano variables for inputs and targets
     input_var = T.tensor4('inputs')
-    target_var = T.matrix('targets')
+    target_var = T.ivector('targets')
 
     # Create neural network model (depending on first command line parameter)
 
-    network = build_cnn(input_var)
+    network, weight_penal = build_cnn(input_var)
 
     # Create a loss expression for training, i.e., a scalar objective we want
     # to minimize (for our multi-class problem, it is the cross-entropy loss):
     prediction = lasagne.layers.get_output(network)
     # loss = lasagne.objectives.categorical_crossentropy(prediction, target_var)
-    loss_before = binary_hinge_loss(prediction, target_var)
-    loss = loss_before.mean()
+    loss_before = lasagne.objectives.multiclass_hinge_loss(prediction, target_var, 5)
+    loss = loss_before.mean() + weight_penal
     # We could add some weight decay as well here, see lasagne.regularization.
 
     # Create update expressions for training, i.e., how to modify the
@@ -145,16 +148,16 @@ def main(model='mlp', num_epochs=3000):
     #updates = lasagne.updates.nesterov_momentum(
     #         loss, params, learning_rate=0.0001, momentum=0.9)
     # updates = lasagne.updates.sgd(loss, params, learning_rate=0.00001)
-    updates = lasagne.updates.adagrad(loss, params, learning_rate = 0.01)
+    updates = lasagne.updates.adagrad(loss, params, learning_rate = 0.001)
 
     # Create a loss expression for validation/testing. The crucial difference
     # here is that we do a deterministic forward pass through the network,
     # disabling dropout layers.
     test_prediction = lasagne.layers.get_output(network, deterministic=True)
-    test_loss = binary_hinge_loss(test_prediction,target_var)
+    test_loss = lasagne.objectives.multiclass_hinge_loss(test_prediction,target_var)
     test_loss = test_loss.mean()
     # As a bonus, also create an expression for the classification accuracy:
-    test_acc = T.mean(T.eq((test_prediction.reshape((-1,)) > 0.0), (target_var.reshape((-1,)))),
+    test_acc = T.mean(T.eq(T.argmax(test_prediction, axis=1), target_var),
                       dtype=theano.config.floatX)
 
     # Compile a function performing a training step on a mini-batch (by giving
@@ -162,7 +165,7 @@ def main(model='mlp', num_epochs=3000):
     train_fn = theano.function([input_var, target_var], [loss,loss_before, prediction], updates=updates)
 
     # Compile a second function computing the validation loss and accuracy:
-    val_fn = theano.function([input_var, target_var], [test_loss, test_acc, test_prediction, (test_prediction.reshape((-1,)) > 0.0)])
+    val_fn = theano.function([input_var, target_var], [test_loss, test_acc, test_prediction, T.argmax(test_prediction, axis = 1)])
     
     # Finally, launch the training loop.
     print("Starting training...")
@@ -174,7 +177,7 @@ def main(model='mlp', num_epochs=3000):
         start_time = time.time()
         for batch in iterate_minibatches(X_train, y_train, 100, shuffle=True):
             inputs, targets = batch
-            targets = targets.reshape(100, 1)
+            #targets = targets.reshape(100, 1)
             train_batch_err, train_batch_err_before, train_batch_prediction = train_fn(inputs, targets)
             train_err += train_batch_err
             train_batches += 1
@@ -194,15 +197,16 @@ def main(model='mlp', num_epochs=3000):
             test_err = 0
             test_acc = 0
             test_batches = 0
-            for batch in iterate_minibatches(X_test, y_test, 100, shuffle=False):
+            for batch in iterate_minibatches(X_test, y_test, 100, shuffle=True):
                 inputs, targets = batch
-                targets = targets.reshape(100, 1)
-                err, acc, pred_before, pred = val_fn(inputs, targets)
+                #targets = targets.reshape(100, 1)
+                err, acc, pred_before, predict_label = val_fn(inputs, targets)
                 test_err += err
-                test_acc += acc
+                test_acc += np.mean(predict_label[targets!=0] == targets[targets!=0])
                 test_batches += 1
                 if test_batches == 1:
-                    print (pred[:5], targets[:5])
+                    print("predicted_label: ", predict_label)
+                    print("target_label: ", targets.reshape(-1,))
             print("Final results:")
             print("  test loss:\t\t\t{:.6f}".format(test_err / test_batches))
             print("  test accuracy:\t\t{:.2f} %".format(
@@ -220,7 +224,7 @@ def main(model='mlp', num_epochs=3000):
     #np.save("../data/mnist_CNN_params_sigmoid.npy", weightsOfParams)
     #np.save("../data/mnist_CNN_params.npy", weightsOfParams)
     #np.save("../data/mnist_CNN_params_drop_out_semi_Chi_Dec7.npy", weightsOfParams)
-    np.save("../data/google_car_CNN_params_drop_out_Chi_2017_hinge.npy", weightsOfParams)
+    np.save("../data/google_car_CNN_params_drop_out_Chi_2017_hinge_3_class.npy", weightsOfParams)
     #np.save("../data/mnist_CNN_params_For_No_Bias_experiment_out.npy", weightsOfParams)
 
 

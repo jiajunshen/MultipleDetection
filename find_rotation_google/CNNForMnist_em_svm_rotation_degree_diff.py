@@ -142,6 +142,7 @@ def main(model='mlp', num_epochs=2000):
     # X_train = extend_image(X_train)
     #X_test = extend_image(X_test)
     X_train_degree = np.load("../car/Z_degree_train_rotated.npy")
+    X_test_degree = np.load("../car/Z_degree_test_rotated.npy")
 
     ## Define Batch Size ##
     batch_size = 100
@@ -218,7 +219,7 @@ def main(model='mlp', num_epochs=2000):
     # Compile a function performing a training step on a mini-batch (by giving
     # the updates dictionary) and returning the corresponding training loss:
 
-    train_model_fn = theano.function([input_var, vanilla_target_var], [loss,train_acc], updates=updates_model)
+    train_model_fn = theano.function([input_var, vanilla_target_var], [loss,train_acc, transformed_images], updates=updates_model)
     
     train_affine_fn = theano.function([input_var], [loss_affine, loss_affine_before, predictions_rotation, transformed_images] + d_loss_wrt_params, updates=updates_affine)
 
@@ -233,12 +234,13 @@ def main(model='mlp', num_epochs=2000):
         if 1:
             print ("Start Evaluating...")
             test_acc = 0
+            degree_diff = 0
             test_batches = 0
             affine_test_batches = 0
             # Find best rotation
             cached_affine_matrix_test = np.array(np.zeros((X_test.shape[0],)), dtype = np.float32)
-            for batch in iterate_minibatches(X_test, y_test, batch_size, shuffle=False):
-                inputs, targets, index = batch
+            for batch in iterate_minibatches(X_test, y_test, batch_size, X_test_degree, shuffle=False):
+                inputs, targets, correct_degree, index = batch
                 inputs = inputs.reshape(batch_size, 3, 68, 68)
                 train_loss_before_all = []
                 affine_params_all = []
@@ -264,8 +266,12 @@ def main(model='mlp', num_epochs=2000):
                 # According to the best search candidate, get the rotations.
                 affine_params_all_reshape = affine_params_all_reshape[train_arg_min, np.arange(train_arg_min.shape[0])]
                 cached_affine_matrix_test[index] = affine_params_all_reshape.reshape(-1,)
+                car_degree = correct_degree[targets == 1] % 360
+                find_degree = -cached_affine_matrix_test[index][targets == 1]%360
+                degree_diff += np.sum(180 - np.abs(180 - (car_degree - find_degree) % 360))
                 affine_test_batches += 1
                 print(affine_test_batches)
+            print("Evaluation average degree difference: ", degree_diff / X_test[y_test == 1].shape[0])
 
             for batch in iterate_minibatches(X_test, y_test, batch_size, shuffle = False):
                 inputs, targets, index = batch
@@ -285,11 +291,11 @@ def main(model='mlp', num_epochs=2000):
         train_acc_sum_1 = 0
         train_batches = 0
         affine_train_batches = 0
-
+        degree_diff = 0
         weightsOfParams = lasagne.layers.get_all_param_values(network)
         batch_loss = 0
         for batch in iterate_minibatches(X_train, y_train, batch_size, X_train_degree, shuffle=False):
-            inputs, targets, degree, index = batch
+            inputs, targets, correct_degree, index = batch
             inputs = inputs.reshape(batch_size, 3, 68, 68)
             
             train_loss_before_all = []
@@ -331,30 +337,39 @@ def main(model='mlp', num_epochs=2000):
             train_loss_before_all = np.min(train_loss_before_all, axis = 0)
             
             cached_affine_matrix[index] = affine_params_all_reshape.reshape(-1,)
+            car_degree = correct_degree[targets == 1] % 360
+            find_degree = -cached_affine_matrix[index][targets == 1] % 360
+            degree_diff += np.sum(180 - np.abs(180 - (car_degree - find_degree) % 360))
             affine_train_batches += 1
             batch_loss += np.mean(train_loss_before_all)
             print(affine_train_batches) 
         print(batch_loss / affine_train_batches)
         print (time.time() - start_time)
+        print("Train average degree diff: ", degree_diff / X_train[y_train == 1].shape[0])
 
         if 1:
-            for batch in iterate_minibatches(X_train, y_train, batch_size, shuffle=True):
-                inputs, targets, index = batch
+            for batch in iterate_minibatches(X_train, y_train, batch_size, X_train_degree, shuffle=True):
+                inputs, targets, degree, index = batch
                 affine_params.set_value(cached_affine_matrix[index].reshape(-1,))
                 inputs = inputs.reshape(batch_size, 3, 68, 68)
-                train_loss_value, train_acc_value_1 = train_model_fn(inputs, targets)
+                train_loss_value, train_acc_value_1, transformed_image_res = train_model_fn(inputs, targets)
                 train_err += train_loss_value
                 train_acc_sum_1 += train_acc_value_1
                 train_batches += 1
+                if train_batches == 1:
+                    np.save("original_image.npy", inputs)
+                    np.save("transformed_image.npy", transformed_image_res)
+                    print("original degree: ", degree[targets == 1] % 360)
+                    print("find degree: ", -cached_affine_matrix[index][targets == 1] % 360)
         # Then we print the results for this epoch:
         print("Epoch {} of {} took {:.3f}s".format(
             epoch + 1, num_epochs, time.time() - start_time))
         print("  training loss:\t\t{:.6f}".format(train_err / train_batches))
         print("  training acc 1:\t\t{:.6f}".format(train_acc_sum_1 / train_batches))
         
-        if epoch % 100 == 0:
+        if epoch % 10 == 0:
             weightsOfParams = lasagne.layers.get_all_param_values(network)
-            np.save("../data/google_earth_em_new_batch_run_epoch_%d.npy" %epoch, weightsOfParams)
+            np.save("../data/google_earth_em_new_batch_run_epoch_%d_degree_diff.npy" %epoch, weightsOfParams)
 
         
 if __name__ == '__main__':

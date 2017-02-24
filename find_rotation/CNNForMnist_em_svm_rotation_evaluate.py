@@ -228,7 +228,6 @@ def main(model='mlp', num_epochs=1):
     weightsOfParams = np.load("../data/mnist_CNN_params_drop_out_Chi_2017_ROT_hinge_2000_em_new_script_run_3_epoch_1300.npy")
     lasagne.layers.set_all_param_values(network, weightsOfParams)
     # Prepare the evaluating for exhaustive search rotation
-    lasagne.layers.set_all_param_values(network_exhaustive, weightsOfParams[1:])
 
     for epoch in range(num_epochs):
         start_time = time.time()
@@ -246,13 +245,6 @@ def main(model='mlp', num_epochs=1):
             for batch in iterate_minibatches(X_test, y_test, batch_size, shuffle=False):
                 inputs, targets, index = batch
                 
-                ## Visualize the unrotation for exhaustive search
-                if affine_test_batches == 0:
-                    rotated_inputs = rotateImage_batch(inputs, nRotation).reshape(batch_size * nRotation, 1, 40, 40)
-                    _, _, exhaustive_degree = get_affine_exhaustive_fn(rotated_inputs)
-                    unrotated_image = np.array([[rotateImage(inputs[i], exhaustive_degree[i][j]) for j in range(10)] for i in range(100)])
-
-
                 inputs = inputs.reshape(batch_size, 1, 40, 40)
                 train_loss_before_all = []
                 affine_params_all = []
@@ -279,15 +271,6 @@ def main(model='mlp', num_epochs=1):
                 cached_affine_matrix_test[index] = affine_params_all_reshape.reshape(-1, 10)
                 affine_test_batches += 1
                 print(affine_test_batches)
-                if affine_test_batches == 1:
-                    affine_params.set_value(affine_params_all_reshape.reshape(-1))
-                    _, transformed_image_res = val_fn(inputs, targets)
-                    np.save("transformed_res.npy", transformed_image_res)
-                    np.save("unrotated_image.npy", unrotated_image)
-                    np.save("original_res.npy", inputs.reshape(batch_size, 40, 40))
-                    np.save("target.npy", targets)
-                    print(targets[33])
-                    exit()
 
             for batch in iterate_minibatches(X_test, y_test, batch_size, shuffle = False):
                 inputs, targets, index = batch

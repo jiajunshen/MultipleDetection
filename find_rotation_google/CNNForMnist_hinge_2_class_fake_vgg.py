@@ -14,6 +14,7 @@ from lasagne.layers import BatchNormLayer
 # from lasagne.layers import MaxPool2DLayer
 from dataPreparation import load_data
 from lasagne.utils import as_theano_expression
+from lasagne.regularization import regularize_layer_params_weighted, l2
 
 def binary_hinge_loss(predictions, targets, delta=1, log_odds=True,
                       binary=True):
@@ -45,29 +46,32 @@ def build_cnn(input_var=None):
     network = lasagne.layers.InputLayer(shape=(None, 3, 48, 48),
                                         input_var=input_var)
 
-    norm0 = BatchNormLayer(network)
+    network = BatchNormLayer(network)
     # This time we do not apply input dropout, as it tends to work less well
     # for convolutional layers.
 
     # Convolutional layer with 32 kernels of size 5x5. Strided and padded
     # convolutions are supported as well; see the docstring.
-    network = Conv2DLayer(
-            norm0, num_filters=16, filter_size=(5, 5),
+    conv1 = Conv2DLayer(
+            network, num_filters=5, filter_size=(5, 5),
             #nonlinearity=lasagne.nonlinearities.sigmoid,
             nonlinearity=lasagne.nonlinearities.rectify,
             W=lasagne.init.GlorotUniform())
+
+
     # Expert note: Lasagne provides alternative convolutional layers that
     # override Theano's choice of which implementation to use; for details
     # please see http://lasagne.readthedocs.org/en/latest/user/tutorial.html.
 
     # Max-pooling layer of factor 2 in both dimensions:
-    network = MaxPool2DLayer(network, pool_size=(2, 2))
+    #network = MaxPool2DLayer(network, pool_size=(2, 2))
+    
+    #network = BatchNormLayer(network)
 
-    network = BatchNormLayer(network)
-
+    """
     # Another convolution with 32 5x5 kernels, and another 2x2 pooling:
     network = Conv2DLayer(
-            network, num_filters=16, filter_size=(5, 5),
+            network, num_filters=10, filter_size=(3, 3),
             nonlinearity=lasagne.nonlinearities.rectify,
             W = lasagne.init.GlorotUniform()
             #nonlinearity=lasagne.nonlinearities.sigmoid
@@ -77,25 +81,30 @@ def build_cnn(input_var=None):
     network = BatchNormLayer(network)
 
     # A fully-connected layer of 256 units with 50% dropout on its inputs:
-    network = lasagne.layers.DenseLayer(
-            lasagne.layers.dropout(network, p=.5),
-            #network,
-            num_units=128,
+    fc1   = lasagne.layers.DenseLayer(
+            #lasagne.layers.dropout(network, p=.5),
+            network,
+            num_units=10,
             #nonlinearity=lasagne.nonlinearities.sigmoid
             nonlinearity=lasagne.nonlinearities.rectify,
             )
+    """
 
     # And, finally, the 10-unit output layer with 50% dropout on its inputs:
-    network = lasagne.layers.DenseLayer(
-            lasagne.layers.dropout(network, p=.5),
-            #network,
+    fc2   = lasagne.layers.DenseLayer(
+            lasagne.layers.dropout(conv1, p=.5),
+            #conv1,
             num_units=1,
             # nonlinearity=lasagne.nonlinearities.rectify,
             # nonlinearity=lasagne.nonlinearities.sigmoid
             nonlinearity = lasagne.nonlinearities.identity
             )
+    
+    #weight_decay_layers = {fc1:0.0, fc2:0.00}
+    weight_decay_layers = {conv1: 0.2}
+    l2_penalty = regularize_layer_params_weighted(weight_decay_layers, l2)
 
-    return network
+    return fc2, l2_penalty
 
 
 
@@ -118,7 +127,12 @@ def main(model='mlp', num_epochs=3000):
     num_per_class = 100
     print("Using %d per class" % num_per_class) 
     
-    X_train, y_train, X_test, y_test = load_data("/X_train.npy", "/Y_train.npy", "/X_test.npy", "/Y_test.npy")
+    #X_train, y_train, X_test, y_test = load_data("/X_train.npy", "/Y_train.npy", "/X_test.npy", "/Y_test.npy")
+    
+    X_train, y_train, X_test, y_test = load_data("/X_train_3_classes.npy", "/Y_train_3_classes.npy", "/X_test_3_classes.npy", "/Y_test_3_classes.npy")
+
+    y_train[y_train == 2] = 0
+    y_test[y_test == 2] = 0
 
     print(X_train.shape, y_train.shape, X_test.shape, y_test.shape)
 
@@ -128,14 +142,14 @@ def main(model='mlp', num_epochs=3000):
 
     # Create neural network model (depending on first command line parameter)
 
-    network = build_cnn(input_var)
+    network, weight_decay = build_cnn(input_var)
 
     # Create a loss expression for training, i.e., a scalar objective we want
     # to minimize (for our multi-class problem, it is the cross-entropy loss):
     prediction = lasagne.layers.get_output(network)
     # loss = lasagne.objectives.categorical_crossentropy(prediction, target_var)
     loss_before = binary_hinge_loss(prediction, target_var)
-    loss = loss_before.mean()
+    loss = loss_before.mean() + weight_decay
     # We could add some weight decay as well here, see lasagne.regularization.
 
     # Create update expressions for training, i.e., how to modify the
@@ -144,22 +158,22 @@ def main(model='mlp', num_epochs=3000):
     params = lasagne.layers.get_all_params(network, trainable=True)
     #updates = lasagne.updates.nesterov_momentum(
     #         loss, params, learning_rate=0.0001, momentum=0.9)
-    # updates = lasagne.updates.sgd(loss, params, learning_rate=0.00001)
-    updates = lasagne.updates.adagrad(loss, params, learning_rate = 0.01)
+    updates = lasagne.updates.sgd(loss, params, learning_rate=0.01)
+    #updates = lasagne.updates.adagrad(loss, params, learning_rate = 0.01)
 
     # Create a loss expression for validation/testing. The crucial difference
     # here is that we do a deterministic forward pass through the network,
     # disabling dropout layers.
     test_prediction = lasagne.layers.get_output(network, deterministic=True)
     test_loss = binary_hinge_loss(test_prediction,target_var)
-    test_loss = test_loss.mean()
+    test_loss = test_loss.mean() + weight_decay
     # As a bonus, also create an expression for the classification accuracy:
     test_acc = T.mean(T.eq((test_prediction.reshape((-1,)) > 0.0), (target_var.reshape((-1,)))),
                       dtype=theano.config.floatX)
 
     # Compile a function performing a training step on a mini-batch (by giving
     # the updates dictionary) and returning the corresponding training loss:
-    train_fn = theano.function([input_var, target_var], [loss,loss_before, prediction], updates=updates)
+    train_fn = theano.function([input_var, target_var], [loss,loss_before, prediction, test_acc], updates=updates)
 
     # Compile a second function computing the validation loss and accuracy:
     val_fn = theano.function([input_var, target_var], [test_loss, test_acc, test_prediction, (test_prediction.reshape((-1,)) > 0.0)])
@@ -171,11 +185,13 @@ def main(model='mlp', num_epochs=3000):
         # In each epoch, we do a full pass over the training data:
         train_err = 0
         train_batches = 0
+        train_acc = 0
         start_time = time.time()
         for batch in iterate_minibatches(X_train, y_train, 100, shuffle=True):
             inputs, targets = batch
             targets = targets.reshape(100, 1)
-            train_batch_err, train_batch_err_before, train_batch_prediction = train_fn(inputs, targets)
+            train_batch_err, train_batch_err_before, train_batch_prediction, train_batch_acc = train_fn(inputs, targets)
+            train_acc += train_batch_acc
             train_err += train_batch_err
             train_batches += 1
             if (train_batches == 1 and epoch % 10 == 0):
@@ -188,13 +204,14 @@ def main(model='mlp', num_epochs=3000):
         print("Epoch {} of {} took {:.3f}s".format(
             epoch + 1, num_epochs, time.time() - start_time))
         print("  training loss:\t\t{:.6f}".format(train_err / train_batches))
+        print("  training acc:\t\t{:.6f}".format(train_acc / train_batches))
 
         if epoch % 10 == 0: 
             # After training, we compute and print the test error:
             test_err = 0
             test_acc = 0
             test_batches = 0
-            for batch in iterate_minibatches(X_test, y_test, 100, shuffle=False):
+            for batch in iterate_minibatches(X_test, y_test, 100, shuffle=True):
                 inputs, targets = batch
                 targets = targets.reshape(100, 1)
                 err, acc, pred_before, pred = val_fn(inputs, targets)
@@ -208,20 +225,6 @@ def main(model='mlp', num_epochs=3000):
             print("  test accuracy:\t\t{:.2f} %".format(
                 test_acc / test_batches * 100))
 
-            # Optionally, you could now dump the network weights to a file like this:
-            # np.savez('model.npz', *lasagne.layers.get_all_param_values(network))
-            #
-            # And load them again later on like this:
-            # with np.load('model.npz') as f:
-            #     param_values = [f['arr_%d' % i] for i in range(len(f.files))]
-            # lasagne.layers.set_all_param_values(network, param_values)
-    weightsOfParams = lasagne.layers.get_all_param_values(network)
-    #np.save("../data/mnist_clutter_CNN_params_sigmoid.npy", weightsOfParams)
-    #np.save("../data/mnist_CNN_params_sigmoid.npy", weightsOfParams)
-    #np.save("../data/mnist_CNN_params.npy", weightsOfParams)
-    #np.save("../data/mnist_CNN_params_drop_out_semi_Chi_Dec7.npy", weightsOfParams)
-    np.save("../data/google_car_CNN_params_drop_out_Chi_2017_hinge.npy", weightsOfParams)
-    #np.save("../data/mnist_CNN_params_For_No_Bias_experiment_out.npy", weightsOfParams)
 
 
 

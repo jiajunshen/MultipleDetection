@@ -42,53 +42,68 @@ def align_targets(predictions, targets):
 def build_cnn(input_var=None):
 
     # Input layer, as usual:
-    network = lasagne.layers.InputLayer(shape=(None, 3, 48, 48),
+    network = lasagne.layers.InputLayer(shape=(None, 3, 24, 24),
                                         input_var=input_var)
 
-    norm0 = BatchNormLayer(network)
+    # norm0 = BatchNormLayer(network)
     # This time we do not apply input dropout, as it tends to work less well
     # for convolutional layers.
 
     # Convolutional layer with 32 kernels of size 5x5. Strided and padded
     # convolutions are supported as well; see the docstring.
     network = Conv2DLayer(
-            norm0, num_filters=16, filter_size=(5, 5),
+            network, num_filters=20, filter_size=(5, 5),
+            pad = 2,
             #nonlinearity=lasagne.nonlinearities.sigmoid,
-            nonlinearity=lasagne.nonlinearities.rectify,
+            nonlinearity=lasagne.nonlinearities.identity,
             W=lasagne.init.GlorotUniform())
     # Expert note: Lasagne provides alternative convolutional layers that
     # override Theano's choice of which implementation to use; for details
     # please see http://lasagne.readthedocs.org/en/latest/user/tutorial.html.
 
     # Max-pooling layer of factor 2 in both dimensions:
-    network = MaxPool2DLayer(network, pool_size=(2, 2))
+    network = MaxPool2DLayer(network, pool_size=(3, 3), stride = (2, 2))
 
-    network = BatchNormLayer(network)
+    # network = BatchNormLayer(network)
 
     # Another convolution with 32 5x5 kernels, and another 2x2 pooling:
     network = Conv2DLayer(
-            network, num_filters=16, filter_size=(5, 5),
+            network, num_filters=50, filter_size=(5, 5),
+            pad = 2,
+            nonlinearity=lasagne.nonlinearities.identity,
+            W = lasagne.init.GlorotUniform()
+            #nonlinearity=lasagne.nonlinearities.sigmoid
+            )
+    network = lasagne.layers.MaxPool2DLayer(network, pool_size=(3, 3), stride = (2, 2))
+
+    #network = BatchNormLayer(network)
+    
+    # Another convolution with 32 5x5 kernels, and another 2x2 pooling:
+    network = Conv2DLayer(
+            network, num_filters=1, filter_size=(5, 5),
+            pad = 2,
             nonlinearity=lasagne.nonlinearities.rectify,
             W = lasagne.init.GlorotUniform()
             #nonlinearity=lasagne.nonlinearities.sigmoid
             )
-    network = lasagne.layers.MaxPool2DLayer(network, pool_size=(2, 2))
+    #network = lasagne.layers.MaxPool2DLayer(network, pool_size=(3, 3), stride = (2, 2))
 
-    network = BatchNormLayer(network)
+    #network = BatchNormLayer(network)
 
     # A fully-connected layer of 256 units with 50% dropout on its inputs:
     network = lasagne.layers.DenseLayer(
-            lasagne.layers.dropout(network, p=.5),
-            #network,
-            num_units=128,
+            #lasagne.layers.dropout(network, p=.5),
+            network,
+            num_units=10,
             #nonlinearity=lasagne.nonlinearities.sigmoid
-            nonlinearity=lasagne.nonlinearities.rectify,
+            #nonlinearity=lasagne.nonlinearities.rectify,
+            nonlinearity=lasagne.nonlinearities.identity,
             )
 
     # And, finally, the 10-unit output layer with 50% dropout on its inputs:
     network = lasagne.layers.DenseLayer(
-            lasagne.layers.dropout(network, p=.5),
-            #network,
+            #lasagne.layers.dropout(network, p=.5),
+            network,
             num_units=1,
             # nonlinearity=lasagne.nonlinearities.rectify,
             # nonlinearity=lasagne.nonlinearities.sigmoid
@@ -112,13 +127,50 @@ def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
         yield inputs[excerpt], targets[excerpt]
 
 
-def main(model='mlp', num_epochs=3000):
+def main(model='mlp', num_epochs=2000):
     # Load the dataset
     print("Loading data...")
     num_per_class = 100
     print("Using %d per class" % num_per_class) 
     
-    X_train, y_train, X_test, y_test = load_data("/X_train.npy", "/Y_train.npy", "/X_test.npy", "/Y_test.npy")
+    X_train, y_train, X_test, y_test = load_data("/X_train_rotated.npy", "/Y_train_rotated.npy", "/X_test_rotated.npy", "/Y_test_rotated.npy", dataType = "test", downScale = True)
+
+    X_train = X_train[y_train == 1]
+    X_test = X_test[y_test == 1]
+
+    print(X_train.shape)
+    print(X_test.shape)
+    
+    X_train_degree = np.load("../car/Z_degree_train_rotated.npy")
+    X_test_degree = np.load("../car/Z_degree_test_rotated.npy")
+
+    X_train_degree = X_train_degree[y_train == 1] / 180. * np.pi
+    X_test_degree = X_test_degree[y_test == 1] / 180. * np.pi
+
+    X_train_degree[X_train_degree > np.pi] = X_train_degree[X_train_degree > np.pi] - 2 * np.pi
+    X_test_degree[X_test_degree > np.pi] = X_test_degree[X_test_degree > np.pi] - 2 * np.pi
+
+    print(np.max(X_train_degree), np.min(X_train_degree))
+    print(np.max(X_test_degree), np.min(X_test_degree))
+
+    y_train = np.array(X_train_degree, dtype = np.float32)
+    y_test = np.array(X_test_degree, dtype = np.float32)
+
+    print(y_train[:10],y_test[:10])
+
+    """
+    y_train = np.zeros((X_train_degree.shape[0], 2))
+    y_test = np.zeros((X_test_degree.shape[0], 2))
+
+    y_train[:, 0] = np.sin(X_train_degree * np.pi / 180.)
+    y_train[:, 1] = np.cos(X_train_degree * np.pi / 180.)
+
+    y_test[:, 0] = np.sin(X_test_degree * np.pi / 180.)
+    y_test[:, 1] = np.cos(X_test_degree * np.pi / 180.)
+
+    y_train = np.array(y_train, dtype = np.float32)
+    y_test = np.array(y_test, dtype = np.float32)
+    """
 
     print(X_train.shape, y_train.shape, X_test.shape, y_test.shape)
 
@@ -134,7 +186,9 @@ def main(model='mlp', num_epochs=3000):
     # to minimize (for our multi-class problem, it is the cross-entropy loss):
     prediction = lasagne.layers.get_output(network)
     # loss = lasagne.objectives.categorical_crossentropy(prediction, target_var)
-    loss_before = binary_hinge_loss(prediction, target_var)
+    # loss_before = binary_hinge_loss(prediction, target_var)
+    loss_before = lasagne.objectives.squared_error(prediction, target_var)
+
     loss = loss_before.mean()
     # We could add some weight decay as well here, see lasagne.regularization.
 
@@ -142,27 +196,27 @@ def main(model='mlp', num_epochs=3000):
     # parameters at each training step. Here, we'll use Stochastic Gradient
     # Descent (SGD) with Nesterov momentum, but Lasagne offers plenty more.
     params = lasagne.layers.get_all_params(network, trainable=True)
-    #updates = lasagne.updates.nesterov_momentum(
-    #         loss, params, learning_rate=0.0001, momentum=0.9)
-    # updates = lasagne.updates.sgd(loss, params, learning_rate=0.00001)
-    updates = lasagne.updates.adagrad(loss, params, learning_rate = 0.01)
+    updates = lasagne.updates.nesterov_momentum(
+             loss, params, learning_rate=0.001, momentum=0.9)
+    #updates = lasagne.updates.sgd(loss, params, learning_rate=0.00001)
+    #updates = lasagne.updates.adagrad(loss, params, learning_rate = 0.01)
 
     # Create a loss expression for validation/testing. The crucial difference
     # here is that we do a deterministic forward pass through the network,
     # disabling dropout layers.
     test_prediction = lasagne.layers.get_output(network, deterministic=True)
-    test_loss = binary_hinge_loss(test_prediction,target_var)
+    test_loss = lasagne.objectives.squared_error(test_prediction,target_var)
     test_loss = test_loss.mean()
     # As a bonus, also create an expression for the classification accuracy:
-    test_acc = T.mean(T.eq((test_prediction.reshape((-1,)) > 0.0), (target_var.reshape((-1,)))),
-                      dtype=theano.config.floatX)
+    #test_acc = T.mean(T.eq((test_prediction.reshape((-1,)) > 0.0), (target_var.reshape((-1,)))),
+    #                  dtype=theano.config.floatX)
 
     # Compile a function performing a training step on a mini-batch (by giving
     # the updates dictionary) and returning the corresponding training loss:
     train_fn = theano.function([input_var, target_var], [loss,loss_before, prediction], updates=updates)
 
     # Compile a second function computing the validation loss and accuracy:
-    val_fn = theano.function([input_var, target_var], [test_loss, test_acc, test_prediction, (test_prediction.reshape((-1,)) > 0.0)])
+    val_fn = theano.function([input_var, target_var], [test_loss, test_prediction, test_prediction])
     
     # Finally, launch the training loop.
     print("Starting training...")
@@ -189,24 +243,27 @@ def main(model='mlp', num_epochs=3000):
             epoch + 1, num_epochs, time.time() - start_time))
         print("  training loss:\t\t{:.6f}".format(train_err / train_batches))
 
-        if epoch % 10 == 0: 
+        if epoch % 1 == 0: 
             # After training, we compute and print the test error:
             test_err = 0
             test_acc = 0
             test_batches = 0
-            for batch in iterate_minibatches(X_test, y_test, 100, shuffle=False):
+            total_sum = 0
+            for batch in iterate_minibatches(X_test, y_test, 100, shuffle=True):
                 inputs, targets = batch
                 targets = targets.reshape(100, 1)
-                err, acc, pred_before, pred = val_fn(inputs, targets)
+                err, pred_before, pred = val_fn(inputs, targets)
                 test_err += err
-                test_acc += acc
+                #test_acc += acc
                 test_batches += 1
                 if test_batches == 1:
                     print (pred[:5], targets[:5])
+                total_sum += np.sum(np.abs(pred.reshape(-1,) - targets.reshape(-1)))
             print("Final results:")
             print("  test loss:\t\t\t{:.6f}".format(test_err / test_batches))
-            print("  test accuracy:\t\t{:.2f} %".format(
-                test_acc / test_batches * 100))
+            print("  test degree diff sum:\t\t\t{:.6f}".format(total_sum / test_batches / 100.0))
+            #print("  test accuracy:\t\t{:.2f} %".format(
+            #    test_acc / test_batches * 100))
 
             # Optionally, you could now dump the network weights to a file like this:
             # np.savez('model.npz', *lasagne.layers.get_all_param_values(network))
@@ -216,12 +273,6 @@ def main(model='mlp', num_epochs=3000):
             #     param_values = [f['arr_%d' % i] for i in range(len(f.files))]
             # lasagne.layers.set_all_param_values(network, param_values)
     weightsOfParams = lasagne.layers.get_all_param_values(network)
-    #np.save("../data/mnist_clutter_CNN_params_sigmoid.npy", weightsOfParams)
-    #np.save("../data/mnist_CNN_params_sigmoid.npy", weightsOfParams)
-    #np.save("../data/mnist_CNN_params.npy", weightsOfParams)
-    #np.save("../data/mnist_CNN_params_drop_out_semi_Chi_Dec7.npy", weightsOfParams)
-    np.save("../data/google_car_CNN_params_drop_out_Chi_2017_hinge.npy", weightsOfParams)
-    #np.save("../data/mnist_CNN_params_For_No_Bias_experiment_out.npy", weightsOfParams)
 
 
 
