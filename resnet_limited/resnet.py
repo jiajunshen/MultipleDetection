@@ -143,7 +143,7 @@ def iterate_minibatches(inputs, targets, batchsize, shuffle=False, augment=False
 
 # ############################## Main program ################################
 
-def main(n=2, num_epochs=200, model=None):
+def main(n=3, num_epochs=200, model=None):
     # Check if cifar data exists
     if not os.path.exists("./cifar-10-batches-py"):
         print("CIFAR-10 dataset can not be found. Please download the dataset from 'https://www.cs.toronto.edu/~kriz/cifar.html'.")
@@ -241,7 +241,7 @@ def main(n=2, num_epochs=200, model=None):
 
             # adjust learning rate as in paper
             # 32k and 48k iterations should be roughly equivalent to 41 and 61 epochs
-            if (epoch+1) == 41 or (epoch+1) == 61 or (epoch + 1) == 101 or (epoch + 1) == 161:
+            if (epoch+1) == 41 or (epoch+1) == 61:# or (epoch + 1) == 101 or (epoch + 1) == 161:
                 new_lr = sh_lr.get_value() * 0.1
                 print("New LR:"+str(new_lr))
                 sh_lr.set_value(lasagne.utils.floatX(new_lr))
