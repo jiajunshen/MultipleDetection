@@ -131,7 +131,7 @@ def iterate_minibatches(inputs, targets, batchsize, shuffle=False, augment=False
 
 # ############################## Main program ################################
 
-def main(n=3, num_epochs=200, model=None):
+def main(n=5, num_epochs=200, model=None):
     # Check if cifar data exists
     if not os.path.exists("./cifar-10-batches-py"):
         print("CIFAR-10 dataset can not be found. Please download the dataset from 'https://www.cs.toronto.edu/~kriz/cifar.html'.")
@@ -173,7 +173,7 @@ def main(n=3, num_epochs=200, model=None):
         # Create update expressions for training
         # Stochastic Gradient Descent (SGD) with momentum
         params = lasagne.layers.get_all_params(network, trainable=True)
-        lr = 0.001
+        lr = 0.1
         sh_lr = theano.shared(lasagne.utils.floatX(lr))
         updates = lasagne.updates.momentum(
                 loss, params, learning_rate=sh_lr, momentum=0.9)
@@ -239,7 +239,7 @@ def main(n=3, num_epochs=200, model=None):
             # adjust learning rate as in paper
             # 32k and 48k iterations should be roughly equivalent to 41 and 61 epochs
             #if (epoch+1) == 41 or (epoch+1) == 81 or (epoch + 1) == 121 or (epoch + 1) == 161:
-            if (epoch+1) == 81 or (epoch+1) == 121:
+            if (epoch+1) == 41 or (epoch+1) == 61:
                 new_lr = sh_lr.get_value() * 0.1
                 print("New LR:"+str(new_lr))
                 sh_lr.set_value(lasagne.utils.floatX(new_lr))
