@@ -26,7 +26,7 @@ from six.moves import xrange  # pylint: disable=redefined-builtin
 # Process images of this size. Note that this differs from the original CIFAR
 # image size of 32 x 32. If one alters this number, then the entire model
 # architecture will change and any model would need to be retrained.
-IMAGE_SIZE = 46
+IMAGE_SIZE = 32
 
 # Global constants describing the CIFAR-10 data set.
 NUM_CLASSES = 10
@@ -46,12 +46,6 @@ def random_crop(images, dims):
                             offset_width[i]:offset_width[i]+dims[2]]
                      for i in range(image_num)]
     return np.array(cropped_image)
-
-def extend_images(images, dim = 46):
-    extended_size = (dim - 32) // 2
-    #extended_images_res = np.pad(images, ((0,), (0,), (extended_size,),(extended_size,)), mode="reflect")
-    extended_images_res = np.pad(images, ((0,), (0,), (extended_size,),(extended_size,)), mode="median")
-    return extended_images_res 
 
 
 def random_flip_left_right(images):
@@ -110,12 +104,11 @@ class DataSet(object):
         self._num_examples = images.shape[0]
         self._images = np.array(images, dtype=dtype)
         self._images = self._images / 255.0
-        self._cached_deformation = None
+        # self._images = np.array(per_image_standardization(self._images), dtype=dtype)
         self._labels = np.array(labels, dtype=np.int32)
         self._index_in_epoch = 0
         self._index_in_eval_epoch = 0
         self._distortion = distortion
-        #self.permutation()
 
     @property
     def images(self):
@@ -129,48 +122,51 @@ class DataSet(object):
     def num_examples(self):
         return self._num_examples
 
-    def permutation(self):
-        perm = np.arange(self._num_examples)
-        np.random.shuffle(perm)
-        self._images = self._images[perm]
-        self._labels = self._labels[perm]
-        if self._cached_deformation is not None:
-            self._cached_deformation = self._cached_deformation[perm]
+    def data_prepration(self, images, image_size, distortion=True):
+        if distortion:
+            cropped_image = random_crop(images, [3, image_size, image_size])
+            mirrored_image = random_flip_left_right(cropped_image)
+            brightness_adjusted_image = random_brightness(mirrored_image, 64)
+            contrast_adjuested_image = random_contrast(brightness_adjusted_image, 0.2, 1.8)
+            before_standardized_image = contrast_adjuested_image
+        else:
+            before_standardized_image = resize_with_crop_or_pad(images, image_size)
+        standardized_image = np.array(per_image_standardization(before_standardized_image), dtype=np.float32)
+        return standardized_image
 
     def next_batch(self, batch_size, image_size=IMAGE_SIZE):
         start = self._index_in_epoch
         self._index_in_epoch += batch_size
 
-        if self._index_in_epoch > self._num_examples:
+        if self._index_in_epoch > NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN:
             # Shuffle the data
-            self.permutation()
+            perm = np.arange(self._num_examples)
+            np.random.shuffle(perm)
+            self._images = self._images[perm]
+            self._labels = self._labels[perm]
             start = 0
             self._index_in_epoch = batch_size
         end = self._index_in_epoch
         
+        #return self.data_prepration(self._images[start:end], image_size, self._distortion),\
+        #       self._labels[start:end]
         return self._images[start:end],\
                self._labels[start:end],\
-               start,
-
-    def reset(self):
-        self._index_in_epoch = 0
+               start
 
     def next_eval_batch(self, batch_size, image_size=IMAGE_SIZE, distort=False):
         start = self._index_in_eval_epoch
         self._index_in_eval_epoch += batch_size
-        if start >= self._num_examples:
+        if start >= NUM_EXAMPLES_PER_EPOCH_FOR_EVAL:
             self._index_in_eval_epoch = 0
-            return None, None, None
+            return None, None
         else:
             end = self._index_in_eval_epoch
             #resize_image = resize_with_crop_or_pad(self._images[start:end], image_size)
             #standardized_image = per_image_standardization(resize_image)
             #return np.array(standardized_image, dtype=np.float32), self._labels[start:end]
             return self._images[start:end],\
-                   self._labels[start:end],\
-                   start
-            
-    
+                   self._labels[start:end]
             
     
 def read_data_sets(data_dir, distortion=True, dtype=np.float32):
@@ -198,6 +194,7 @@ def read_data_sets(data_dir, distortion=True, dtype=np.float32):
 
     test_images = np.array(np.load(os.path.join(data_dir, "cifar10TestingData.npy")).reshape(10000, 3, 32, 32), dtype=dtype)
     test_images = test_images - mean_images
+    print(test_images.shape)
     test_labels = np.load(os.path.join(data_dir, "cifar10TestingDataLabel.npy"))
 
     train = DataSet(extend_images(train_images), train_labels, distortion=distortion)
@@ -207,8 +204,8 @@ def read_data_sets(data_dir, distortion=True, dtype=np.float32):
     Datasets = collections.namedtuple('Datasets', ['train', 'test', 'sample_test'])
 
     return Datasets(train = train, test = test, sample_test = sample_test)
+            
+    
 
 def load_cifar10():
     return read_data_sets(os.environ['CIFAR10_DIR'])
-
-
