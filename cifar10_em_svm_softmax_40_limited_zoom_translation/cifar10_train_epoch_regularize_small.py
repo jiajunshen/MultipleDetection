@@ -28,7 +28,7 @@ import time
 import numpy as np
 from six.moves import xrange  # pylint: disable=redefined-builtin
 
-import cifar10
+import cifar10_regularize_small as cifar10
 import cifar10_input
 
 import theano
@@ -42,9 +42,8 @@ from collections import OrderedDict
 
 batch_size = 100
 #saved_weights_dir = '/project/evtimov/jiajun/MultipleDetection/cifar10_em_svm_hinge_100/cifar10_theano_train_hinge_adam_new/model_step25.npy'
-#saved_weights_dir = '../cifar10_em_svm_softmax_40/cifar10_theano_train_adam/model.npy'
-saved_weights_dir = '../cifar10_em_svm_softmax_40/cifar10_theano_train_adam/model_epoch1000.npy'
-train_dir = './cifar10_theano_train_adam'
+saved_weights_dir = '../cifar10_em_svm_softmax_40/cifar10_theano_train_adam/model_step2000.npy'
+train_dir = './cifar10_theano_train_adam_regularize_small'
 max_epochs = 2000
 validation = False
 validation_model = ''
@@ -73,9 +72,10 @@ def train():
 
     saved_weights = np.load(saved_weights_dir)
 
-    deformation_matrix_matrix = np.array(np.zeros((batch_size * 10, 2)), dtype = np.float32)
+    deformation_matrix_matrix = np.array(np.zeros((batch_size * 10, 3)), dtype = np.float32)
+    deformation_matrix_matrix[:,2] = 1
 
-    network_saved_weights = np.array([deformation_matrix_matrix, ] + [saved_weights[i] for i in range(saved_weights.shape[0])])
+    network_saved_weights = np.array([deformation_matrix_matrix[:,:2], ] + [deformation_matrix_matrix[:,2:], ]+ [saved_weights[i] for i in range(saved_weights.shape[0])])
 
     lasagne.layers.set_all_param_values(cnn_model, network_saved_weights)
 
@@ -108,16 +108,24 @@ def train():
 
     params = lasagne.layers.get_all_params(cnn_model, trainable=True)
 
-    affine_params = params[0]
+    affine_params = params[:2]
 
-    model_params = params[1:]
+    model_params = params[2:]
 
-    d_loss_wrt_params = T.grad(loss_affine, [affine_params])
+    print(params)
+
+    d_loss_wrt_params = T.grad(loss_affine, affine_params)
 
     updates_affine = OrderedDict()
+  
+    i = 0 
 
-    for param, grad in zip([affine_params], d_loss_wrt_params):
-        updates_affine[param] = param - 0.0005 * grad
+    for param, grad in zip(affine_params, d_loss_wrt_params):
+        if i == 0:
+            updates_affine[param] = param - 0.0009 * grad
+        if i == 1:
+            updates_affine[param] = param - 0.003 * grad
+        i += 1
 
     updates_model = lasagne.updates.adam(loss, model_params, learning_rate=0.0001)
 
@@ -174,7 +182,8 @@ def train():
 
 
 
-    training_cached_deformation = np.array(np.zeros((X_train.shape[0], 10, 2)),dtype = np.float32)
+    training_cached_deformation = np.array(np.zeros((X_train.shape[0], 10, 3)),dtype = np.float32)
+    training_cached_deformation[:, 2] = 1
 
     for epoch in xrange(max_epochs):
         start_time = time.time() 
@@ -189,18 +198,23 @@ def train():
                 else:
                     X_current_test = X_sample_test
                     Y_current_test = Y_sample_test
-                testing_cached_deformation = np.array(np.zeros((X_current_test.shape[0], 10, 2)), dtype = np.float32)
+                testing_cached_deformation = np.array(np.zeros((X_current_test.shape[0], 10, 3)), dtype = np.float32)
+                testing_cached_deformation[:,2] = 1
 
                 for batch in iterate_minibatches(X_current_test, Y_current_test, batch_size):
                     test_image, test_label, test_indices = batch 
                     batch_time = time.time()
-                    affine_params.set_value(np.array(np.zeros((batch_size * 10, 2)), dtype = np.float32))
+                    set_value = np.array(np.zeros((batch_size * 10, 3)), dtype = np.float32)
+                    set_value[:, 2] = 1
+                    affine_params[0].set_value(set_value[:,:2])
+                    affine_params[1].set_value(set_value[:, 2:])
                     for i in range(20):
                         weightsOfParams = lasagne.layers.get_all_param_values(cnn_model)
                         train_affine_result = train_affine_fn(test_image)
-                        train_loss, train_loss_before, final_transformed_images, _ = train_affine_result[:4]
+                        train_loss, train_loss_before, final_transformed_images, model_deformation_result = train_affine_result[:4]
 
-                    testing_cached_deformation[test_indices] = weightsOfParams[0].reshape(-1, 10, 2)
+                    testing_cached_deformation[test_indices, :, :2] = weightsOfParams[0].reshape(-1, 10, 2)
+                    testing_cached_deformation[test_indices, :, 2:] = weightsOfParams[1].reshape(-1, 10, 1)
                     affine_test_batches += 1
                     print(affine_test_batches,time.time() - batch_time)
                     batch_time = time.time()
@@ -213,7 +227,9 @@ def train():
             total_count = 0
             for batch in iterate_minibatches(X_current_test, Y_current_test, batch_size):
                 test_image, test_label, test_indices = batch
-                affine_params.set_value(testing_cached_deformation[test_indices].reshape(-1, 2))
+                set_value = testing_cached_deformation[test_indices].reshape(-1, 3)
+                affine_params[0].set_value(set_value[:, :2])
+                affine_params[1].set_value(set_value[:, 2:])
                 acc_1, acc_2, test_loss = val_fn(test_image, test_label)
                 total_acc_count_1 += acc_1 * test_image.shape[0]
                 total_acc_count_2 += acc_2 * test_image.shape[0]
@@ -242,20 +258,29 @@ def train():
             batch_time = time.time()
             for batch in iterate_minibatches(X_train, Y_train, batch_size):
                 train_image, train_label, train_indices = batch
-                affine_params.set_value(np.array(np.zeros((batch_size * 10, 2)), dtype = np.float32))
+                set_value = np.array(np.zeros((batch_size * 10, 3)), dtype = np.float32)
+                set_value[:,2] = 1.0
+                affine_params[0].set_value(set_value[:, :2])
+                affine_params[1].set_value(set_value[:, 2:])
                 for i in range(20):
                     weightsOfParams = lasagne.layers.get_all_param_values(cnn_model)
                     train_affine_result = train_affine_fn(train_image)
                     train_loss, train_loss_before, final_transformed_images, model_deformation_result = train_affine_result[:4]
                     if epoch % 5 == 0 and affine_train_batches == 1:
-                        print("gradient of the rotation: ", train_affine_result[4].reshape(-1, 10)[0])
-                        print("Degree of each image", weightsOfParams[0].reshape(-1, 10)[0])
+                        print(len(train_affine_result))
+                        print(train_affine_result[4].shape)
+                        print(train_affine_result[5].shape)
+                        #print("gradient of the translation: ", train_affine_result[4].reshape(-1, 10, 2)[0])
+                        #print("gradient of the scaling: ", train_affine_result[5].reshape(-1, 10, 1)[0])
+                        print("Translation of each image", weightsOfParams[0].reshape(-1, 10, 2)[0])
+                        print("Scaling of each image", weightsOfParams[1].reshape(-1, 10, 1)[0])
                         print("Model Deformation Result 0", model_deformation_result.reshape(-1, 10)[0])
                         print("Quantile", [np.percentile(model_deformation_result, i) for i in range(100)])
                         print(train_loss_before.reshape(-1, 10)[0])
                         print(train_loss)
                         print("----------------------------------------------------------------------")
-                training_cached_deformation[train_indices] = weightsOfParams[0].reshape(-1, 10, 2)
+                training_cached_deformation[train_indices, :, :2] = weightsOfParams[0].reshape(-1, 10, 2)
+                training_cached_deformation[train_indices, :, 2:] = weightsOfParams[1].reshape(-1, 10, 1)
                 
                 affine_train_batches += 1
                 
@@ -267,7 +292,8 @@ def train():
                     print(train_acc_value_1)
                     print(train_acc_value_2)
                     print(np.array([weightsOfParams[0].reshape(-1, 10, 2)[i, train_label[i], :] for i in range(batch_size)]))
-                    np.save("./translated_image.npy", final_transformed_images)
+                    print(np.array([weightsOfParams[1].reshape(-1, 10, 1)[i, train_label[i], :] for i in range(batch_size)]))
+                    np.save("./translated_image_regularization_small.npy", final_transformed_images)
 
                 print(affine_train_batches, time.time() - batch_time)
                 batch_time = time.time()
@@ -276,7 +302,9 @@ def train():
         if 1:
             for batch in iterate_minibatches(X_train, Y_train, batch_size, shuffle = True):
                 train_image, train_label, train_indices = batch
-                affine_params.set_value(training_cached_deformation[train_indices].reshape(-1,2))
+                set_value = training_cached_deformation[train_indices].reshape(-1,3)
+                affine_params[0].set_value(set_value[:, :2])
+                affine_params[1].set_value(set_value[:, 2:])
                 train_loss_value, train_acc_value_1, train_acc_value_2 = train_fn(train_image, train_label)
                 train_err += train_loss_value
                 train_acc_sum_1 += train_acc_value_1
@@ -292,7 +320,7 @@ def train():
         
             if epoch % 100 == 0:
                 weightsOfParams = lasagne.layers.get_all_param_values(cnn_model)
-                np.save("./tmp/CIFAR_CNN_params_TRANSLATE_LATENT_LESS_epoch_%d.npy" %epoch, weightsOfParams)
+                np.save("./tmp/CIFAR_CNN_params_TRANSLATE_Zoom_LATENT_LESS_epoch_%d.npy" %epoch, weightsOfParams)
 
 
 def main(argv=None):

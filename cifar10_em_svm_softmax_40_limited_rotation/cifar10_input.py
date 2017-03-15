@@ -49,8 +49,7 @@ def random_crop(images, dims):
 
 def extend_images(images, dim = 46):
     extended_size = (dim - 32) // 2
-    #extended_images_res = np.pad(images, ((0,), (0,), (extended_size,),(extended_size,)), mode="reflect")
-    extended_images_res = np.pad(images, ((0,), (0,), (extended_size,),(extended_size,)), mode="median")
+    extended_images_res = np.pad(images, ((0,), (0,), (extended_size,),(extended_size,)), mode="reflect")
     return extended_images_res 
 
 
@@ -190,14 +189,11 @@ def read_data_sets(data_dir, distortion=True, dtype=np.float32):
 
     train_images = train_images[index]
     train_labels = train_labels[index]
-    mean_images = np.mean(train_images, axis = 0)
-    train_images = train_images - mean_images
 
     print(train_images.shape)
     print(train_labels.shape)
 
     test_images = np.array(np.load(os.path.join(data_dir, "cifar10TestingData.npy")).reshape(10000, 3, 32, 32), dtype=dtype)
-    test_images = test_images - mean_images
     test_labels = np.load(os.path.join(data_dir, "cifar10TestingDataLabel.npy"))
 
     train = DataSet(extend_images(train_images), train_labels, distortion=distortion)
