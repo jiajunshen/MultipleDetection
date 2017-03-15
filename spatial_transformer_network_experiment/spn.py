@@ -83,7 +83,7 @@ def main():
                     n, train_cost, train_acc, valid_acc, test_acc)
     except KeyboardInterrupt:
         pass
-
+    """
     plt.figure(figsize=(9,9))
     plt.plot(1-np.array(train_accs), label='Training Error')
     plt.plot(1-np.array(valid_accs), label='Validation Error')
@@ -91,7 +91,10 @@ def main():
     plt.xlabel('Epoch', fontsize=20)
     plt.ylabel('Error', fontsize=20)
     plt.savefig('trainingErrorPlot.pdf')
+    """
+    np.save("trainError.npy", [1 - np.array(train_accs), 1 - np.array(valid_accs)])
 
+    """
     plt.figure(figsize=(7,14))
     for i in range(3):
         plt.subplot(321+i*2)
@@ -105,6 +108,11 @@ def main():
             plt.title('Transformed 20x20', fontsize=20)
         plt.axis('off')
     plt.savefig('transformed_image.pdf')
+    """
+    original_data = data['X_test'][:20].reshape(20, DIM, DIM)
+    transformed_data = test_transform[:20].reshape(20, DIM//3, DIM//3)
+    np.save("transform.npy", [original_data, transformed_data])
+
 
 if __name__ == "__main__":
     main()
