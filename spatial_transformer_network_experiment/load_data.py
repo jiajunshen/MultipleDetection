@@ -1,5 +1,5 @@
 import os
-os.environ['THEANO_FLAGS']='device=gpu0'
+os.environ['THEANO_FLAGS']='device=cpu'
 
 import matplotlib
 import numpy as np
@@ -18,9 +18,9 @@ NUM_CLASSES = 10
 
 def load_data(mnist_cluttered):
     data = np.load(mnist_cluttered)
-    X_train, y_train = data['x_train'], np.argmax(data['y_train'], axis=-1)
-    X_valid, y_valid = data['x_valid'], np.argmax(data['y_valid'], axis=-1)
-    X_test, y_test = data['x_test'], np.argmax(data['y_test'], axis=-1)
+    X_train, y_train = data['x_train'][:50000], data['y_train'][:50000]
+    X_valid, y_valid = data['x_train'][50000:], data['y_train'][50000:]
+    X_test, y_test = data['x_test'], data['y_test']
 
     # reshape for convolutions
     X_train = X_train.reshape((X_train.shape[0], 1, DIM, DIM))
