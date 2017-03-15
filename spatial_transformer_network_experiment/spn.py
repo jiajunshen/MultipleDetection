@@ -111,7 +111,7 @@ def main():
     """
     original_data = data['X_test'][:20].reshape(20, DIM, DIM)
     transformed_data = test_transform[:20].reshape(20, DIM//3, DIM//3)
-    np.save("transform.npy", [original_data, transformed_data])
+    np.save("transform.npy", tuple(original_data, transformed_data))
 
 
 if __name__ == "__main__":
