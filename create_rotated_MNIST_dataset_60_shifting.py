@@ -27,40 +27,42 @@ def extend_image(inputs, size = 40):
         inputs = inputs.reshape(inputs.shape[0], 1, inputs.shape[1], inputs.shape[2])
     extended_images = np.zeros((inputs.shape[0], 1, size, size), dtype = np.float32)
     margin_size = (size - inputs.shape[2]) / 2
-    extended_images[:, :, margin_size:margin_size + inputs.shape[2], margin_size:margin_size + inputs
+    margin_x = np.random.randint(0, size - inputs.shape[1])
+    margin_y = np.random.randint(0, size - inputs.shape[2])
+    extended_images[:, :, margin_x:margin_x + inputs.shape[2], margin_y:margin_y + inputs
 .shape[3]] = inputs
     return extended_images
 
 
 X_train, y_train, X_test, y_test = load_data("/X_train.npy", "/Y_train.npy", "/X_test.npy", "/Y_test.npy")
-X_test = extend_image(X_test, 40)
-X_train = extend_image(X_train, 40)
+#X_test = extend_image(X_test, 40)
+#X_train = extend_image(X_train, 40)
 
 train_size = y_train.shape[0]
 all_images = []
 all_labels = []
 for j in range(1):
-    angles_1 = list(np.random.randint(low = -50, high = 0, size = train_size // 2))
-    angles_2 = list(np.random.randint(low = 0, high = 50, size = train_size // 2))
+    angles_1 = list(np.random.randint(low = -90, high = 0, size = train_size // 2))
+    angles_2 = list(np.random.randint(low = 0, high = 90, size = train_size // 2))
     angles = np.array(angles_1 + angles_2)
     np.random.shuffle(angles)
     rotated_image = np.array([rotateImage(X_train[i], angles[i]) for i in range(train_size)], dtype = np.float32)
     all_images.append(rotated_image)
     all_labels.append(y_train)
-all_images = np.vstack(all_images)
-all_labels = np.hstack(all_labels)
+#all_images = np.vstack(all_images)
+#all_labels = np.hstack(all_labels)
+all_images = X_train
+all_labels = y_train
 
 print(all_images.shape, all_labels.shape)
 
 index = np.arange(1 * train_size)
 np.random.shuffle(index)
 
-all_images = all_images[index, 0, 6: 34, 6:34]
+all_images = all_images[index]
 all_labels = all_labels[index]
 
 
-np.save("/phddata/jiajun/Research/mnist/X_train_rotated.npy", all_images)
-np.save("/phddata/jiajun/Research/mnist/Y_train_rotated.npy", all_labels)
 
 x_train = extend_image(all_images, 60)
 y_train = all_labels
@@ -69,30 +71,30 @@ test_size = y_test.shape[0]
 all_images = []
 all_labels = []
 for j in range(1):
-    angles_1 = list(np.random.randint(low = -50, high = 0, size = test_size // 2))
-    angles_2 = list(np.random.randint(low = 0, high = 50, size = test_size // 2))
+    angles_1 = list(np.random.randint(low = -90, high = 0, size = test_size // 2))
+    angles_2 = list(np.random.randint(low = 0, high = 90, size = test_size // 2))
     angles = np.array(angles_1 + angles_2)
     np.random.shuffle(angles)
     rotated_image = np.array([rotateImage(X_test[i], angles[i]) for i in range(test_size)], dtype = np.float32)
     all_images.append(rotated_image)
     all_labels.append(y_test)
-all_images = np.vstack(all_images)
-all_labels = np.hstack(all_labels)
+#all_images = np.vstack(all_images)
+all_images = X_test
+#all_labels = np.hstack(all_labels)
+all_labels = y_test
 
 print(all_images.shape, all_labels.shape)
 
 index = np.arange(1 * test_size)
 np.random.shuffle(index)
 
-all_images = all_images[index, 0, 6: 34, 6:34]
+all_images = all_images[index, 0]
 all_labels = all_labels[index]
 
 
-np.save("/phddata/jiajun/Research/mnist/X_test_rotated.npy", all_images)
-np.save("/phddata/jiajun/Research/mnist/Y_test_rotated.npy", all_labels)
 
 x_test = extend_image(all_images, 60)
 y_test = all_labels
 
-np.savez("/phddata/jiajun/Research/mnist/rotated_mnist.npz", x_train = x_train, y_train = y_train, x_test = x_test, y_test=y_test)
+np.savez("/phddata/jiajun/Research/mnist/rotated_mnist_60_shift.npz", x_train = x_train, y_train = y_train, x_test = x_test, y_test=y_test)
 

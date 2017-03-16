@@ -40,8 +40,8 @@ train_size = y_train.shape[0]
 all_images = []
 all_labels = []
 for j in range(1):
-    angles_1 = list(np.random.randint(low = -50, high = 0, size = train_size // 2))
-    angles_2 = list(np.random.randint(low = 0, high = 50, size = train_size // 2))
+    angles_1 = list(np.random.randint(low = -90, high = 0, size = train_size // 2))
+    angles_2 = list(np.random.randint(low = 0, high = 90, size = train_size // 2))
     angles = np.array(angles_1 + angles_2)
     np.random.shuffle(angles)
     rotated_image = np.array([rotateImage(X_train[i], angles[i]) for i in range(train_size)], dtype = np.float32)
@@ -59,18 +59,16 @@ all_images = all_images[index, 0, 6: 34, 6:34]
 all_labels = all_labels[index]
 
 
-np.save("/phddata/jiajun/Research/mnist/X_train_rotated.npy", all_images)
-np.save("/phddata/jiajun/Research/mnist/Y_train_rotated.npy", all_labels)
 
-x_train = extend_image(all_images, 60)
+x_train = extend_image(all_images, 42)
 y_train = all_labels
 
 test_size = y_test.shape[0]
 all_images = []
 all_labels = []
 for j in range(1):
-    angles_1 = list(np.random.randint(low = -50, high = 0, size = test_size // 2))
-    angles_2 = list(np.random.randint(low = 0, high = 50, size = test_size // 2))
+    angles_1 = list(np.random.randint(low = -90, high = 0, size = test_size // 2))
+    angles_2 = list(np.random.randint(low = 0, high = 90, size = test_size // 2))
     angles = np.array(angles_1 + angles_2)
     np.random.shuffle(angles)
     rotated_image = np.array([rotateImage(X_test[i], angles[i]) for i in range(test_size)], dtype = np.float32)
@@ -88,11 +86,9 @@ all_images = all_images[index, 0, 6: 34, 6:34]
 all_labels = all_labels[index]
 
 
-np.save("/phddata/jiajun/Research/mnist/X_test_rotated.npy", all_images)
-np.save("/phddata/jiajun/Research/mnist/Y_test_rotated.npy", all_labels)
 
-x_test = extend_image(all_images, 60)
+x_test = extend_image(all_images, 42)
 y_test = all_labels
 
-np.savez("/phddata/jiajun/Research/mnist/rotated_mnist.npz", x_train = x_train, y_train = y_train, x_test = x_test, y_test=y_test)
+np.savez("/phddata/jiajun/Research/mnist/rotated_mnist_42.npz", x_train = x_train, y_train = y_train, x_test = x_test, y_test=y_test)
 
