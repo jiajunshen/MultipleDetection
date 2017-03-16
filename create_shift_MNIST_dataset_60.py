@@ -27,8 +27,8 @@ def extend_image(inputs, size = 40):
         inputs = inputs.reshape(inputs.shape[0], 1, inputs.shape[1], inputs.shape[2])
     extended_images = np.zeros((inputs.shape[0], 1, size, size), dtype = np.float32)
     margin_size = (size - inputs.shape[2]) / 2
-    margin_x = np.random.randint(0, size - inputs.shape[1])
-    margin_y = np.random.randint(0, size - inputs.shape[2])
+    margin_x = np.random.randint(0, size - inputs.shape[2])
+    margin_y = np.random.randint(0, size - inputs.shape[3])
     extended_images[:, :, margin_x:margin_x + inputs.shape[2], margin_y:margin_y + inputs
 .shape[3]] = inputs
     return extended_images
