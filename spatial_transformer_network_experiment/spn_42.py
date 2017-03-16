@@ -8,17 +8,16 @@ import matplotlib.pyplot as plt
 import lasagne
 import theano
 import theano.tensor as T
-from load_data import load_data
-from load_model import build_model
+from load_data_42 import load_data
+from load_model_fc import build_model
 conv = lasagne.layers.Conv2DLayer
 pool = lasagne.layers.MaxPool2DLayer
-NUM_EPOCHS = 50
+NUM_EPOCHS = 200
 BATCH_SIZE = 256
-LEARNING_RATE = 0.001
-DIM = 60
+LEARNING_RATE = 0.01
+DIM = 42
 NUM_CLASSES = 10
-#mnist_cluttered = "/phddata/jiajun/Research/mnist/rotated_mnist.npz"
-mnist_cluttered = "/phddata/jiajun/Research/mnist/mnist_60_shift.npz"
+mnist_cluttered = "/phddata/jiajun/Research/mnist/rotated_mnist_42.npz"
 
 def main():
     data = load_data(mnist_cluttered)
@@ -37,7 +36,8 @@ def main():
 
     sh_lr = theano.shared(lasagne.utils.floatX(LEARNING_RATE))
     cost = T.mean(T.nnet.categorical_crossentropy(output_train, y))
-    updates = lasagne.updates.adam(cost, model_params, learning_rate=sh_lr)
+    #updates = lasagne.updates.adam(cost, model_params, learning_rate=sh_lr)
+    updates = lasagne.updates.momentum(cost, model_params, learning_rate=sh_lr, momentum=0.9)
 
     train = theano.function([X, y], [cost, output_train, localize_output_value], updates=updates)
     eval = theano.function([X], [output_eval, transform_eval, localize_output_value])
@@ -117,7 +117,7 @@ def main():
     plt.savefig('transformed_image.pdf')
     """
     original_data = data['X_test'][:100].reshape(100, DIM, DIM)
-    transformed_data = test_transform[:100].reshape(100, DIM//3, DIM//3)
+    transformed_data = test_transform[:100].reshape(100, DIM, DIM)
     np.save("transformed_data.npy", transformed_data)
     np.save("original_data.npy", original_data)
 

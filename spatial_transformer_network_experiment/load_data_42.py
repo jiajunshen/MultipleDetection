@@ -13,7 +13,7 @@ pool = lasagne.layers.MaxPool2DLayer
 NUM_EPOCHS = 500
 BATCH_SIZE = 256
 LEARNING_RATE = 0.001
-DIM = 60
+DIM = 42
 NUM_CLASSES = 10
 
 def load_data(mnist_cluttered):
