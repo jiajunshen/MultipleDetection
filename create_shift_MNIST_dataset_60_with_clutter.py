@@ -23,7 +23,7 @@ def rotateImage(image, angle):
     return np.array(result[np.newaxis, :, :], dtype = np.float32)
 
 
-def extend_image(inputs, images = None, mega_patch_w=8, size=40, num_strokes=5):
+def extend_image(inputs, images = None, mega_patch_w=8, size=40, num_strokes=3):
     if len(inputs.shape) == 3:
         inputs = inputs.reshape(inputs.shape[0], 1, inputs.shape[1], inputs.shape[2])
 
@@ -125,5 +125,5 @@ all_labels = all_labels[index]
 x_test, x_test_cluttered  = extend_image(all_images, size = 60)
 y_test = all_labels
 
-np.savez("/phddata/jiajun/Research/mnist/mnist_60_shift_cluttered.npz", x_train = x_train, y_train = y_train, x_test = x_test, y_test=y_test, x_train_cluttered = x_train_cluttered, x_test_cluttered = x_test_cluttered)
+np.savez("./data/mnist_60_shift_cluttered.npz", x_train = x_train, y_train = y_train, x_test = x_test, y_test=y_test, x_train_cluttered = x_train_cluttered, x_test_cluttered = x_test_cluttered)
 
