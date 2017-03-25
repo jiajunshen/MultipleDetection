@@ -23,7 +23,7 @@ def rotateImage(image, angle):
     return np.array(result[np.newaxis, :, :], dtype = np.float32)
 
 
-def extend_image(inputs, images = None, mega_patch_w=8, size=40, num_strokes=3):
+def extend_image(inputs, images = None, mega_patch_w=8, size=40, num_strokes=5):
     if len(inputs.shape) == 3:
         inputs = inputs.reshape(inputs.shape[0], 1, inputs.shape[1], inputs.shape[2])
 
@@ -52,12 +52,23 @@ def extend_image(inputs, images = None, mega_patch_w=8, size=40, num_strokes=3):
                 intensity = np.sum(patch)
             extended_images_with_clutter[i, 0, t_x:t_x + mega_patch_w, t_y:t_y + mega_patch_w] = patch
         
-        margin_x = np.random.randint(0, size - inputs.shape[2])
-        margin_y = np.random.randint(0, size - inputs.shape[3])
-        extended_images[i, :, margin_x:margin_x + inputs.shape[2], margin_y:margin_y + inputs
-    .shape[3]] = inputs[i]
-        extended_images_with_clutter[i, :, margin_x:margin_x + inputs.shape[2], margin_y:margin_y + inputs
-    .shape[3]] = inputs[i]
+        #margin_x = np.random.randint(0, size - inputs.shape[2])
+        #margin_y = np.random.randint(0, size - inputs.shape[3])
+        x_value_index = np.where(np.sum(inputs[i, 0], axis = 1) != 0)[0]
+        y_value_index = np.where(np.sum(inputs[i, 0], axis = 0) != 0)[0]
+
+        x_left = x_value_index[0]
+        x_right = x_value_index[-1]
+        x_length = x_right - x_left + 1
+        y_left = y_value_index[0]
+        y_right = y_value_index[-1]
+        y_length = y_right - y_left + 1
+
+        margin_x = np.random.randint(0, size - x_length)
+        margin_y = np.random.randint(0, size - y_length)
+
+        extended_images[i, :, margin_x:margin_x + x_length, margin_y:margin_y + y_length] = inputs[i, :, x_left: x_left + x_length, y_left: y_left + y_length]
+        extended_images_with_clutter[i, :, margin_x:margin_x + x_length, margin_y:margin_y + y_length] = inputs[i, :, x_left : x_left + x_length, y_left: y_left + y_length]
     return extended_images, extended_images_with_clutter
 
 
