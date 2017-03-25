@@ -44,7 +44,7 @@ def extend_image(inputs, images = None, mega_patch_w=8, size=40, num_strokes=5):
             t_y = np.random.randint(size - mega_patch_w)
             t_x = np.random.randint(size - mega_patch_w)
             patch = np.zeros((mega_patch_w, mega_patch_w))
-            while(intensity < 10):
+            while(intensity < 12):
                 index = np.random.randint(image_size)
                 s_y = np.random.randint(image_w - mega_patch_w)
                 s_x = np.random.randint(image_h - mega_patch_w)
@@ -69,6 +69,7 @@ def extend_image(inputs, images = None, mega_patch_w=8, size=40, num_strokes=5):
 
         extended_images[i, :, margin_x:margin_x + x_length, margin_y:margin_y + y_length] = inputs[i, :, x_left: x_left + x_length, y_left: y_left + y_length]
         extended_images_with_clutter[i, :, margin_x:margin_x + x_length, margin_y:margin_y + y_length] = inputs[i, :, x_left : x_left + x_length, y_left: y_left + y_length]
+    
     return extended_images, extended_images_with_clutter
 
 
@@ -136,5 +137,5 @@ all_labels = all_labels[index]
 x_test, x_test_cluttered  = extend_image(all_images, size = 60)
 y_test = all_labels
 
-np.savez("./data/mnist_60_shift_cluttered.npz", x_train = x_train, y_train = y_train, x_test = x_test, y_test=y_test, x_train_cluttered = x_train_cluttered, x_test_cluttered = x_test_cluttered)
+np.savez("/phddata/jiajun/Research/mnist/mnist_60_shift_cluttered.npz", x_train = x_train, y_train = y_train, x_test = x_test, y_test=y_test, x_train_cluttered = x_train_cluttered, x_test_cluttered = x_test_cluttered)
 
