@@ -37,14 +37,14 @@ def build_cnn(input_var=None, batch_size = None, class_num=10):
         b = b.flatten()
         loc_l1 = MaxPool2DLayer(l_in, pool_size=(2, 2))
         loc_l2 = Conv2DLayer(
-            loc_l1, num_filters=20, filter_size=(5, 5), W=lasagne.init.HeUniform('relu'))
+            loc_l1, num_filters=20, filter_size=(5, 5), W=lasagne.init.HeUniform('relu'), name = "loc_l2_%d" %i)
         loc_l3 = MaxPool2DLayer(loc_l2, pool_size=(2, 2))
-        loc_l4 = Conv2DLayer(loc_l3, num_filters=20, filter_size=(5, 5), W=lasagne.init.HeUniform('relu'))
+        loc_l4 = Conv2DLayer(loc_l3, num_filters=20, filter_size=(5, 5), W=lasagne.init.HeUniform('relu'), name = "loc_l4_%d" %i)
         loc_l5 = lasagne.layers.DenseLayer(
-            loc_l4, num_units=50, W=lasagne.init.HeUniform('relu'))
+            loc_l4, num_units=50, W=lasagne.init.HeUniform('relu'), name = "loc_l5_%d" %i)
         loc_out = lasagne.layers.DenseLayer(
             loc_l5, num_units=6, b=b, W=lasagne.init.Constant(0.0), 
-            nonlinearity=lasagne.nonlinearities.identity)
+            nonlinearity=lasagne.nonlinearities.identity, name = "loc_out_%d" %i)
         # Transformer network
         l_trans1 = lasagne.layers.TransformerLayer(l_in, loc_out, downsample_factor=1.0)
         print "Transformer network output shape: ", l_trans1.output_shape
@@ -84,12 +84,12 @@ def build_cnn(input_var=None, batch_size = None, class_num=10):
             num_units=10,
             )
 
-    network_transformed = lasagne.layers.ReshapeLayer(network_transformed, (-1, 10, 10, 40, 40))
-
     fc2_selected = SelectLayer(fc2, 10)
+
+    network_transformed = lasagne.layers.ReshapeLayer(network_transformed, (-1, 10, 10, 40, 40))
 
     weight_decay_layers = {fc1:0.0, fc2:0.002}
     l2_penalty = regularize_layer_params_weighted(weight_decay_layers, l2)
 
-    return fc2, fc2_selected, l2_penalty, network_transformed 
+    return fc2_selected, l2_penalty, network_transformed 
     
