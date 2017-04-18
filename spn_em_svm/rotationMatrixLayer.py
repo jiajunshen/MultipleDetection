@@ -116,23 +116,23 @@ def linspace(start, stop, num):
     return T.arange(num, dtype=theano.config.floatX)*step+start
 
 
-class RotationTransformationLayer(lasagne.layers.Layer):
+class RotationTransformationLayer(lasagne.layers.MergeLayer):
     # incoming would be n x C x W x H 
-    def __init__(self, incoming, n, name=None, Degree = lasagne.init.Normal(5), Translation = lasagne.init.Normal(0.01), **kwargs):
-        super(RotationTransformationLayer, self).__init__(incoming, **kwargs)
-        self.n = n
+    def __init__(self, incoming, localization_network, **kwargs):
+        super(RotationTransformationLayer, self).__init__([incoming,localization_network], **kwargs)
         self.get_output_kwargs = []
-        self.Degree = self.add_param(Degree, (n, ), name = "Degree")
 
-    def get_output_for(self, input, **kwargs):
-        cosT = T.cos(self.Degree * 3.1415926 / 180.0)
-        sinT = T.sin(self.Degree * 3.1415926 / 180.0)
+    def get_output_for(self, inputs, **kwargs):
+        input, degree = inputs
+        cosT = T.cos(degree)
+        sinT = T.sin(degree)
         zeros = T.zeros_like(cosT)
         # zeros = self.Translation
         theta = T.stack([cosT, sinT, zeros, -sinT, cosT, zeros], axis = 1)
         return transform_affine(theta, input)
 
-    def get_output_shape_for(self, input_shape):
-        return input_shape
+    def get_output_shape_for(self, input_shapes):
+        shape = input_shapes[0]
+        return shape
     
 

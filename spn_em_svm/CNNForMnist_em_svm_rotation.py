@@ -17,8 +17,8 @@ from dataPreparation import load_data
 from CNNForMnist_Rotation_Net import rotateImage_batch 
 from CNNForMnist_Rotation_Net import rotateImage
 from collections import OrderedDict
-from build_cnn import build_cnn
-
+# from build_cnn import build_cnn
+from build_cnn_only_rotation import build_cnn
 
 
 def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
@@ -51,15 +51,16 @@ def main(model='mlp', num_epochs=2000):
     
     ## Load Data##
     X_train, y_train, X_test, y_test = load_data("/mnistROT.npy", "/mnistROTLabel.npy", "/mnistROTTEST.npy", "/mnistROTLABELTEST.npy", "ROT_MNIST")
+    # X_train, y_train, X_test, y_test = load_data("/X_train.npy", "/Y_train.npy", "/X_test.npy", "/Y_test.npy")
 
     
     X_train = extend_image(X_train, 40)
     X_test_all = extend_image(X_test, 40)
-    X_test = extend_image(X_test, 40)[:2000]
+    X_test = extend_image(X_test, 40)
 
     y_train = y_train
     y_test_all = y_test[:]
-    y_test = y_test[:2000]
+    y_test = y_test
 
 
     ## Define Batch Size ##
@@ -70,12 +71,14 @@ def main(model='mlp', num_epochs=2000):
     vanilla_target_var = T.ivector('vanilla_targets')
 
     # Create neural network model (depending on first command line parameter)
-    network, weight_decay, network_transformed = build_cnn(input_var, batch_size)
+    network, weight_decay, network_transformed, _ = build_cnn(input_var, batch_size)
     
     # saved_weights = np.load("../data/mnist_Chi_dec_100.npy")
-    saved_weights = np.load("../data/mnist_CNN_params_drop_out_Chi_2017_hinge.npy")
+    # saved_weights = np.load("../data/mnist_CNN_params_drop_out_Chi_2017_hinge.npy")
 
-    lasagne.layers.set_all_param_values(transformed_images, saved_weights)
+    #initial_weights = lasagne.layers.get_all_param_values(network_transformed)
+
+    #lasagne.layers.set_all_param_values(network, [initial_weights[i] for i in range(8)] + [saved_weights[i] for i in range(8)])
     
     # Create a loss expression for training, i.e., a scalar objective we want
     # to minimize (for our multi-class problem, it is the cross-entropy loss):
@@ -86,20 +89,22 @@ def main(model='mlp', num_epochs=2000):
     transformed_images = lasagne.layers.get_output(network_transformed, deterministic = True)
    
     loss = lasagne.objectives.multiclass_hinge_loss(train_prediction, vanilla_target_var)
-    loss = loss.mean() + weight_decay
+    # loss = lasagne.objectives.categorical_crossentropy(train_prediction, vanilla_target_var)
+    loss = loss.mean()
+    # loss = loss.mean() + weight_decay
 
     # This is to use the rotation that the "gradient descent" think will give the highest score for each of the classes
     train_acc_1 = T.mean(T.eq(T.argmax(train_prediction, axis = 1), vanilla_target_var), dtype = theano.config.floatX)
     
     params = lasagne.layers.get_all_params(network, trainable=True)
     
-
-    #affine_params = params[:80]
-    #model_params = params[80:]
-    #updates_affine = lasagne.updates.sgd(loss_affine, affine_params, learning_rate = 0.01)
+    model_params = params
+    # affine_params = params[:80]
+    # model_params = params[:80]
+    # updates_affine = lasagne.updates.sgd(loss_affine, affine_params, learning_rate = 0.01)
     
     updates_model = lasagne.updates.adagrad(loss, model_params, learning_rate = 0.01)
-
+    # updates_model = lasagne.updates.momentum(loss, model_params, learning_rate = 0.001, momentum = 0.9)
     test_prediction = lasagne.layers.get_output(network, deterministic=True)
     
     test_acc = T.mean(T.eq(T.argmax(test_prediction, axis=1), vanilla_target_var),
@@ -108,7 +113,7 @@ def main(model='mlp', num_epochs=2000):
     # Compile a function performing a training step on a mini-batch (by giving
     # the updates dictionary) and returning the corresponding training loss:
 
-    train_model_fn = theano.function([input_var, vanilla_target_var], [loss,train_acc_1], updates=updates_model)
+    train_model_fn = theano.function([input_var, vanilla_target_var], [loss, train_acc_1, transformed_images], updates=updates_model)
     
     # train_affine_fn = theano.function([input_var], [loss_affine, loss_affine_before], updates=updates_affine)
 
@@ -147,10 +152,14 @@ def main(model='mlp', num_epochs=2000):
         for batch in iterate_minibatches(X_train, y_train, batch_size, shuffle=True):
             inputs, targets, index = batch
             inputs = inputs.reshape(batch_size, 1, 40, 40)
-            train_loss_value, train_acc_value_1 = train_model_fn(inputs, targets)
+            train_loss_value, train_acc_value_1, trained_image = train_model_fn(inputs, targets)
             train_err += train_loss_value
             train_acc_sum_1 += train_acc_value_1
             train_batches += 1
+            if train_batches == 1:
+                np.save("original_image.npy", inputs)
+                np.save("transformed_image.npy", trained_image)
+            #sys.exit()
         
         # Then we print the results for this epoch:
         print("Epoch {} of {} took {:.3f}s".format(

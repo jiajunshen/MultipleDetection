@@ -11,6 +11,7 @@ import cv2
 #from lasagne.layers.dnn import Conv2DDNNLayer as Conv2DLayer
 #from lasagne.layers.dnn import MaxPool2DDNNLayer as MaxPool2DLayer
 from lasagne.regularization import regularize_layer_params_weighted, l2
+from rotationMatrixLayer import RotationTransformationLayer
 
 from lasagne.layers import Conv2DLayer
 from lasagne.layers import MaxPool2DLayer
@@ -31,10 +32,6 @@ def build_cnn(input_var=None, batch_size = None, class_num=10):
 
     loc_network_list = []
     for i in range(class_num):
-        b = np.zeros((2, 3), dtype=theano.config.floatX)
-        b[0, 0] = 1
-        b[1, 1] = 1
-        b = b.flatten()
         loc_l1 = MaxPool2DLayer(l_in, pool_size=(2, 2))
         loc_l2 = Conv2DLayer(
             loc_l1, num_filters=20, filter_size=(5, 5), W=lasagne.init.HeUniform('relu'), name = "loc_l2_%d" %i)
@@ -43,10 +40,10 @@ def build_cnn(input_var=None, batch_size = None, class_num=10):
         loc_l5 = lasagne.layers.DenseLayer(
             loc_l4, num_units=50, W=lasagne.init.HeUniform('relu'), name = "loc_l5_%d" %i)
         loc_out = lasagne.layers.DenseLayer(
-            loc_l5, num_units=6, b=b, W=lasagne.init.Constant(0.0), 
+            loc_l5, num_units=1, W=lasagne.init.Constant(0.0), 
             nonlinearity=lasagne.nonlinearities.identity, name = "loc_out_%d" %i)
         # Transformer network
-        l_trans1 = lasagne.layers.TransformerLayer(l_in, loc_out, downsample_factor=1.0)
+        l_trans1 = RotationTransformationLayer(l_in, loc_out)
         print "Transformer network output shape: ", l_trans1.output_shape
         loc_network_list.append(l_trans1)
     network_transformed = lasagne.layers.ConcatLayer(loc_network_list, axis = 1)
@@ -87,7 +84,7 @@ def build_cnn(input_var=None, batch_size = None, class_num=10):
             )
 
     fc2_selected = SelectLayer(fc2, 10)
-    fc2_selected = lasagne.layers.NonlinearityLayer(fc2_selected, nonlinearity=lasagne.nonlinearities.softmax)
+    # fc2_selected = lasagne.layers.NonlinearityLayer(fc2_selected, nonlinearity=lasagne.nonlinearities.softmax)
 
     #network_transformed = lasagne.layers.ReshapeLayer(network_transformed, (-1, 10, 10, 40, 40))
 
