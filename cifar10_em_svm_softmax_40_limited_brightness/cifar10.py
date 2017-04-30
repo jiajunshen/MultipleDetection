@@ -14,7 +14,7 @@ from lasagne.regularization import regularize_layer_params_weighted, l2
 #from lasagne.layers.dnn import MaxPool2DDNNLayer as MaxPool2DLayer
 from repeatLayer import Repeat
 from selectLayer import SelectLayer
-from rotationMatrixLayer import RotationTransformationLayer
+from brightness_adjust import BrightnessAdjustLayer 
 
 
 # Basic model parameters.
@@ -59,22 +59,16 @@ def build_cnn(input_var=None, batch_size = None):
     # If we only ran this model on a single GPU, we could simplify this function
     # by replacing all instances of tf.get_variable() with tf.Variable().
     #
-    slice_start = (IMAGE_SIZE - ORIGINAL_IMAGE_SIZE) // 2
 
-    input_layer = InputLayer((batch_size, 3, IMAGE_SIZE, IMAGE_SIZE), input_var=input_var)
-
+    input_layer = InputLayer((batch_size, 3, ORIGINAL_IMAGE_SIZE, ORIGINAL_IMAGE_SIZE), input_var=input_var)
 
     repeatInput = Repeat(input_layer, 10)
 
-    reshapeInput = lasagne.layers.ReshapeLayer(repeatInput, (batch_size * 10, 3, IMAGE_SIZE, IMAGE_SIZE))
+    reshapeInput = lasagne.layers.ReshapeLayer(repeatInput, (batch_size * 10, 3, ORIGINAL_IMAGE_SIZE, ORIGINAL_IMAGE_SIZE))
 
-    original_transformed = RotationTransformationLayer(reshapeInput, batch_size * 10)
+    original_transformed = BrightnessAdjustLayer(reshapeInput, batch_size * 10)
 
-    input_transformed = lasagne.layers.SliceLayer(original_transformed, indices=slice(slice_start, slice_start + ORIGINAL_IMAGE_SIZE), axis = 2)
-
-    input_transformed = lasagne.layers.SliceLayer(input_transformed, indices=slice(slice_start, slice_start + ORIGINAL_IMAGE_SIZE), axis = 3)
-
-    norm0 = BatchNormLayer(input_transformed)
+    norm0 = BatchNormLayer(original_transformed)
 
     # conv1
     conv1 = Conv2DLayer(norm0, num_filters=64, filter_size=(3,3),
@@ -156,7 +150,7 @@ def build_cnn(input_var=None, batch_size = None):
     output_selected = SelectLayer(output_layer, 10)
 
     # Weight Decay
-    weight_decay_layers = {original_transformed: 10}
+    weight_decay_layers = {original_transformed: 0.01}
     l2_penalty = regularize_layer_params_weighted(weight_decay_layers, l2)
 
     return output_layer, output_selected, l2_penalty, output_transformed

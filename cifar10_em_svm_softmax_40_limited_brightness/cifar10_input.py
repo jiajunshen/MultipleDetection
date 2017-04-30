@@ -197,9 +197,15 @@ def read_data_sets(data_dir, distortion=True, dtype=np.float32):
     test_images = np.array(np.load(os.path.join(data_dir, "cifar10TestingData.npy")).reshape(10000, 3, 32, 32), dtype=dtype)
     test_labels = np.load(os.path.join(data_dir, "cifar10TestingDataLabel.npy"))
 
+    """
     train = DataSet(extend_images(train_images), train_labels, distortion=distortion)
     test = DataSet(extend_images(test_images), test_labels, test=True)
     sample_test = DataSet(extend_images(test_images[:2000]), test_labels[:2000], test=True)
+    """
+
+    train = DataSet(train_images, train_labels, distortion=distortion)
+    test = DataSet(test_images, test_labels, test=True)
+    sample_test = DataSet(test_images[:2000], test_labels[:2000], test=True)
 
     Datasets = collections.namedtuple('Datasets', ['train', 'test', 'sample_test'])
 
