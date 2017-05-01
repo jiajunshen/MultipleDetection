@@ -68,10 +68,10 @@ def build_cnn(input_var=None, batch_size = None):
 
     original_transformed = BrightnessAdjustLayer(reshapeInput, batch_size * 10)
 
-    norm0 = BatchNormLayer(original_transformed)
+    # norm0 = BatchNormLayer(original_transformed)
 
     # conv1
-    conv1 = Conv2DLayer(norm0, num_filters=64, filter_size=(3,3),
+    conv1 = Conv2DLayer(original_transformed, num_filters=64, filter_size=(3,3),
                         nonlinearity=lasagne.nonlinearities.rectify,
                         pad='same', W=lasagne.init.GlorotUniform(),
                         b=lasagne.init.Constant(0.0),
@@ -145,7 +145,7 @@ def build_cnn(input_var=None, batch_size = None):
                                b=lasagne.init.Constant(0.0),
                                name="output")
     
-    output_transformed = lasagne.layers.ReshapeLayer(input_transformed, (batch_size, 10, 3, ORIGINAL_IMAGE_SIZE, ORIGINAL_IMAGE_SIZE))
+    output_transformed = lasagne.layers.ReshapeLayer(original_transformed, (batch_size, 10, 3, ORIGINAL_IMAGE_SIZE, ORIGINAL_IMAGE_SIZE))
 
     output_selected = SelectLayer(output_layer, 10)
 

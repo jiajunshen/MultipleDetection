@@ -16,9 +16,9 @@ class BrightnessAdjustLayer(lasagne.layers.Layer):
         v_channel_bias = self.brightness.dimshuffle(0, 'x', 'x',)
         data_channel_v = input[:, 2] + v_channel_bias
         data_channel_v = data_channel_v.clip(0.0, 1.0)
-        output = T.stack(input[:,0], input[:,1], data_channel_v, axis = 1)
+        output = T.stack([input[:,0], input[:,1], data_channel_v], axis = 1)
         return output
 
-    def get_output_shape_for(lasagne.layers.Layer):
+    def get_output_shape_for(self, input_shape):
         return input_shape
 

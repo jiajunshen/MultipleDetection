@@ -22,11 +22,13 @@ from __future__ import print_function
 import os
 import numpy as np
 from six.moves import xrange  # pylint: disable=redefined-builtin
+import matplotlib
+from matplotlib.colors import rgb_to_hsv
 
 # Process images of this size. Note that this differs from the original CIFAR
 # image size of 32 x 32. If one alters this number, then the entire model
 # architecture will change and any model would need to be retrained.
-IMAGE_SIZE = 46
+IMAGE_SIZE = 32
 
 # Global constants describing the CIFAR-10 data set.
 NUM_CLASSES = 10
@@ -175,6 +177,10 @@ class DataSet(object):
     
 def read_data_sets(data_dir, distortion=True, dtype=np.float32):
     train_images = np.array(np.load(os.path.join(data_dir, "cifar10TrainingData.npy")).reshape(50000, 3, 32, 32), dtype=dtype)
+    train_images = np.rollaxis(train_images, 1, 4)
+    train_images = rgb_to_hsv(train_images)
+    train_images = np.rollaxis(train_images, 3, 1)
+
     train_labels = np.load(os.path.join(data_dir, "cifar10TrainingDataLabel.npy"))
 
     train_images_list = []
@@ -195,21 +201,21 @@ def read_data_sets(data_dir, distortion=True, dtype=np.float32):
     print(train_labels.shape)
 
     test_images = np.array(np.load(os.path.join(data_dir, "cifar10TestingData.npy")).reshape(10000, 3, 32, 32), dtype=dtype)
+    test_images = np.rollaxis(test_images, 1, 4)
+    test_images = rgb_to_hsv(test_images)
+    test_images = np.rollaxis(test_images, 3, 1)
+    print(test_images.shape)
     test_labels = np.load(os.path.join(data_dir, "cifar10TestingDataLabel.npy"))
-
-    """
-    train = DataSet(extend_images(train_images), train_labels, distortion=distortion)
-    test = DataSet(extend_images(test_images), test_labels, test=True)
-    sample_test = DataSet(extend_images(test_images[:2000]), test_labels[:2000], test=True)
-    """
 
     train = DataSet(train_images, train_labels, distortion=distortion)
     test = DataSet(test_images, test_labels, test=True)
+
     sample_test = DataSet(test_images[:2000], test_labels[:2000], test=True)
 
     Datasets = collections.namedtuple('Datasets', ['train', 'test', 'sample_test'])
 
     return Datasets(train = train, test = test, sample_test = sample_test)
+
 
 def load_cifar10():
     return read_data_sets(os.environ['CIFAR10_DIR'])
