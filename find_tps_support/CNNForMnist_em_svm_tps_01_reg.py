@@ -199,7 +199,7 @@ def main(model='mlp', num_epochs=100):
     # Compile a function performing a training step on a mini-batch (by giving
     # the updates dictionary) and returning the corresponding training loss:
 
-    train_model_fn = theano.function([input_var, vanilla_target_var], [loss,train_acc_1, train_acc_2], updates=updates_model)
+    train_model_fn = theano.function([input_var, vanilla_target_var], [loss, train_acc_1, train_acc_2], updates=updates_model)
     
     train_affine_fn = theano.function([input_var], [loss_affine, loss_affine_before, transformed_images, weight_decay], updates=updates_affine)
 
@@ -211,7 +211,7 @@ def main(model='mlp', num_epochs=100):
     # weightsOfParams = np.load("../data/mnist_CNN_params_drop_out_Chi_2017_Deformation_hinge_2000_script_run_reg_0_1_MNIST_em_new_epoch1500.npy")
     # lasagne.layers.set_all_param_values(network, weightsOfParams)
     
-    cached_deformation_matrix = np.array(np.zeros((X_train.shape[1], 10, 2 * 16)), dtype = np.float32)
+    cached_deformation_matrix = np.array(np.zeros((X_train.shape[0], 10, 2 * 16)), dtype = np.float32)
     for epoch in range(num_epochs):
         start_time = time.time()
         if epoch % 50 == 0 or epoch + 1 == num_epochs:
@@ -271,6 +271,8 @@ def main(model='mlp', num_epochs=100):
                 for i in range(200):
                     weightsOfParams = lasagne.layers.get_all_param_values(network)
                     train_loss, train_loss_before, final_transformed_images, weight_decay_value = train_affine_fn(inputs)
+                    if i == 0 and affine_train_batches == 1:
+                        print("weight_decay_value: ", weight_decay_value)
                 cached_deformation_matrix[index] = weightsOfParams[0].reshape((-1, 10, 2 * 16))
                 affine_train_batches += 1
                 batch_loss += np.mean(train_loss_before)
