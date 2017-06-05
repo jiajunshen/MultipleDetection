@@ -231,9 +231,10 @@ def main(model='mlp', num_epochs=100):
                 for i in range(200):
                     weightsOfParams = lasagne.layers.get_all_param_values(network)
                     train_loss, train_loss_before, final_transformed_images, _ = train_affine_fn(inputs)
-
-                #np.save("./deformed_images.npy", final_transformed_images)
-                #np.save("./deformed_images_original.npy", inputs)
+                if affine_test_batches == 0:
+                    np.save(os.environ['TMP'] + "/deformed_images_epoch_%d.npy" %epoch, final_transformed_images)
+                    np.save(os.environ['TMP'] + "/deformed_images_original_epoch_%d.npy" %epoch, inputs)
+                    np.save(os.environ['TMP'] + "/deformed_images_label_epoch_%d" %epoch, targets)
     
                 cached_deformation_matrix_test[index] = weightsOfParams[0].reshape((-1, 10, 2 * 16))
                 affine_test_batches += 1
@@ -256,7 +257,8 @@ def main(model='mlp', num_epochs=100):
         train_batches = 0
         affine_train_batches = 0
 
-        if epoch % 50 == -1:
+        if 1:
+            #if epoch % 50 == -1:
             print("inside")
             weightsOfParams = lasagne.layers.get_all_param_values(network)
             batch_loss = 0
@@ -276,7 +278,7 @@ def main(model='mlp', num_epochs=100):
             print(batch_loss / affine_train_batches)
             print (time.time() - start_time)
 
-        if 0:
+        if 1:
             for batch in iterate_minibatches(X_train, y_train, batch_size, shuffle=True):
                 inputs, targets, index = batch
                 affine_params.set_value(cached_deformation_matrix[index].reshape((-1, 2 * 16)))
