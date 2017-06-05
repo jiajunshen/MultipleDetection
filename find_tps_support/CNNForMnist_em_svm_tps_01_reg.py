@@ -12,6 +12,7 @@ from lasagne.layers.dnn import Conv2DDNNLayer as Conv2DLayer
 from lasagne.layers.dnn import MaxPool2DDNNLayer as MaxPool2DLayer
 from lasagne.regularization import regularize_layer_params_weighted, l2
 from dataPreparation import load_data
+from dataPreparation import load_data_digit_clutter
 from repeatLayer import Repeat
 from TPSTransformationMatrixLayer import TPSTransformationMatrixLayer
 from selectLayer import SelectLayer
@@ -97,7 +98,7 @@ def extend_image(inputs, size = 40):
     return extended_images
 
 
-def main(model='mlp', num_epochs=1):
+def main(model='mlp', num_epochs=100):
     # Load the dataset
     print("Loading data...")
     # num_per_class = 100
@@ -105,8 +106,8 @@ def main(model='mlp', num_epochs=1):
     print("Using all the training data") 
     
     ## Load Data##
-    X_train, y_train, X_test, y_test = load_data("/X_train_limited_100.npy", "/Y_train_limited_100.npy", "/X_test_deformed.npy", "/Y_test_deformed.npy")
-    # X_train, y_train, X_test, y_test = load_data("/X_train.npy", "/Y_train.npy", "/X_test_deformed.npy", "/Y_test_deformed.npy")
+    X_train, y_train, _, _ = load_data("/X_train_limited_100.npy", "/Y_train_limited_100.npy", "/X_test.npy", "/Y_test.npy")
+    _, _, X_test, y_test = load_data_digit_clutter("/X_train_limited_100.npy", "/Y_train_limited_100.npy", "/X_test.npy", "/Y_test.npy")
     
     X_train = extend_image(X_train, 40)
     X_test_all = extend_image(X_test, 40)
@@ -132,6 +133,7 @@ def main(model='mlp', num_epochs=1):
     network, network_for_deformation, weight_decay, network_transformed = build_cnn(input_var, batch_size)
     
     # saved_weights = np.load("../data/mnist_Chi_dec_100.npy")
+
     saved_weights = np.load("../data/mnist_CNN_params_drop_out_Chi_2017_hinge.npy")
 
     # Deformation matrix has 16 control points, coordiate number 2 * control points
@@ -155,8 +157,6 @@ def main(model='mlp', num_epochs=1):
     
     transformed_images = lasagne.layers.get_output(network_transformed, deterministic = True)
 
-    
-    #loss_affine_before = lasagne.objectives.squared_error(predictions_rotation.clip(-20, 3), 3) + lasagne.objectives.squared_error(predictions_rotation.clip(3, 20), 20)
     loss_affine_before = lasagne.objectives.squared_error(predictions_deformation.clip(-20, 20), 20)
 
     loss_affine = loss_affine_before.mean() + weight_decay
@@ -208,9 +208,10 @@ def main(model='mlp', num_epochs=1):
 
     # Finally, launch the training loop.
         #    weightsOfParams = lasagne.layers.get_all_param_values(network)
-    weightsOfParams = np.load("../data/mnist_CNN_params_drop_out_Chi_2017_Deformation_hinge_2000_script_run_reg_0_1_MNIST_em_new_epoch1500.npy")
-    lasagne.layers.set_all_param_values(network, weightsOfParams)
-    cached_deformation_matrix = np.array(np.zeros((X_train.shape[0], 10, 2 * 16)), dtype = np.float32)
+    # weightsOfParams = np.load("../data/mnist_CNN_params_drop_out_Chi_2017_Deformation_hinge_2000_script_run_reg_0_1_MNIST_em_new_epoch1500.npy")
+    # lasagne.layers.set_all_param_values(network, weightsOfParams)
+    
+    cached_deformation_matrix = np.array(np.zeros((X_train.shape[1], 10, 2 * 16)), dtype = np.float32)
     for epoch in range(num_epochs):
         start_time = time.time()
         if epoch % 50 == 0 or epoch + 1 == num_epochs:
