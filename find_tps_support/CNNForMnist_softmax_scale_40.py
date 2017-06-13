@@ -60,7 +60,7 @@ def build_cnn(input_var=None):
             lasagne.layers.dropout(network, p=.5),
             # network,
             num_units=10,
-            nonlinearity=lasagne.nonlinearities.identity,
+            nonlinearity=lasagne.nonlinearities.softmax,
             # nonlinearity=lasagne.nonlinearities.sigmoid
             )
 
@@ -97,7 +97,7 @@ def main(model='mlp', num_epochs=3000):
     print("Using %d per class" % num_per_class)
 
     X_train, y_train, X_test, y_test = load_data("/X_train.npy", "/Y_train.npy", "/X_test.npy", "/Y_test.npy")
-    _, _, X_test, y_test = load_data_digit_clutter("/X_train_limited_100.npy", "/Y_train_limited_100.npy", "/X_test.npy", "/Y_test.npy")
+    # _, _, X_test, y_test = load_data_digit_clutter("/X_train_limited_100.npy", "/Y_train_limited_100.npy", "/X_test.npy", "/Y_test.npy")
     X_train_final = []
     y_train_final = []
     for i in range(10):
@@ -124,8 +124,8 @@ def main(model='mlp', num_epochs=3000):
     # Create a loss expression for training, i.e., a scalar objective we want
     # to minimize (for our multi-class problem, it is the cross-entropy loss):
     prediction = lasagne.layers.get_output(network)
-    # loss = lasagne.objectives.categorical_crossentropy(prediction, target_var)
-    loss = lasagne.objectives.multiclass_hinge_loss(prediction, target_var, delta=20)
+    loss = lasagne.objectives.categorical_crossentropy(prediction, target_var)
+    #loss = lasagne.objectives.multiclass_hinge_loss(prediction, target_var)
     loss = loss.mean()
     # We could add some weight decay as well here, see lasagne.regularization.
 
@@ -208,7 +208,7 @@ def main(model='mlp', num_epochs=3000):
     #np.save("../data/mnist_CNN_params_drop_out_semi_Chi_Dec7.npy", weightsOfParams)
     # np.save("../data/mnist_CNN_params_drop_out_Chi_2017_hinge.npy", weightsOfParams)
     #np.save("../data/mnist_CNN_params_For_No_Bias_experiment_out.npy", weightsOfParams)
-    np.save("../data/mnist_CNN_params_drop_out_Chi_2017_hinge_scaled_100.npy", weightsOfParams)
+    np.save("../data/mnist_CNN_params_drop_out_Chi_2017_softmax_scaled_100.npy", weightsOfParams)
 
 
 

@@ -133,8 +133,9 @@ def main(model='mlp', num_epochs=1):
 
     # saved_weights = np.load("../data/mnist_Chi_dec_100.npy")
 
-    #saved_weights = np.load("../data/mnist_CNN_params_drop_out_Chi_2017_hinge.npy")
-    saved_weights = np.load("../data/mnist_CNN_params_drop_out_Chi_2017_hinge_scaled_100.npy")
+    # saved_weights = np.load("../data/mnist_CNN_params_drop_out_Chi_2017_hinge.npy")
+    # saved_weights = np.load("../data/mnist_CNN_params_drop_out_Chi_2017_hinge_scaled_100.npy")
+    saved_weights = np.load("../data/mnist_CNN_params_drop_out_Chi_2017_softmax_scaled_100.npy")
 
     # Deformation matrix has 16 control points, coordiate number 2 * control points
     deformation_matrix_matrix = np.array(np.zeros((batch_size * 10, 1)), dtype = np.float32)
@@ -201,8 +202,14 @@ def main(model='mlp', num_epochs=1):
 
     test_prediction_deformation = lasagne.layers.get_output(network_for_deformation, deterministic=True)
 
-    test_acc = T.mean(T.eq(T.argmax(T.max(test_prediction, axis=1), axis=1), vanilla_target_var),
+    test_predicted_label = T.argmax(T.max(test_prediction, axis=1), axis=1)
+    test_acc = T.mean(T.eq(test_predicted_label, vanilla_target_var),
                       dtype=theano.config.floatX)
+
+    # Uncomment this if you are using softmax result
+    test_prediction = T.nnet.nnet.softmax(T.reshape(test_prediction, (-1, 10)))
+    test_prediction = T.reshape(test_prediction, (-1, 10, 10))
+    test_acc = T.mean(T.eq(T.argmax(T.max(test_prediction, axis=1), axis=1), vanilla_target_var), dtype=theano.config.floatX)
 
     # Compile a function performing a training step on a mini-batch (by giving
     # the updates dictionary) and returning the corresponding training loss:
@@ -211,7 +218,7 @@ def main(model='mlp', num_epochs=1):
 
     train_affine_fn = theano.function([input_var], [loss_affine, loss_affine_before, transformed_images, weight_decay], updates=updates_affine)
 
-    val_fn = theano.function([input_var, vanilla_target_var], test_acc)
+    val_fn = theano.function([input_var, vanilla_target_var], [test_acc, test_predicted_label, test_prediction])
 
 
     # Finally, launch the training loop.
@@ -264,7 +271,15 @@ def main(model='mlp', num_epochs=1):
                 inputs, targets, index = batch
                 affine_params.set_value(cached_deformation_matrix_test[index].reshape((-1, 1)))
                 inputs = inputs.reshape((batch_size, 1, 40, 40))
-                acc = val_fn(inputs, targets)
+                acc, predicted_value, prediction_value = val_fn(inputs, targets)
+                if test_batches == 0:
+                    train_loss, train_loss_before, final_transformed_images, _ = train_affine_fn(inputs)
+                    np.save(os.environ['TMP'] + "/deformed_images_epoch_%d.npy" %epoch, final_transformed_images)
+                    np.save(os.environ['TMP'] + "/deformed_images_original_epoch_%d.npy" %epoch, inputs)
+                    np.save(os.environ['TMP'] + "/deformed_images_label_epoch_%d" %epoch, targets)
+                    np.save(os.environ['TMP'] + "/deformed_images_predicted_label_epoch_%d" %epoch, predicted_value)
+                    np.save(os.environ['TMP'] + "/deformed_images_predition_value_epoch_%d" %epoch, prediction_value)
+
                 test_acc += acc
                 test_batches += 1
             print("Final results:")

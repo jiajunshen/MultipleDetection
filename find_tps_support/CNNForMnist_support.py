@@ -46,7 +46,6 @@ def build_cnn(input_var=None, batch_size = None):
             network, num_filters=32, filter_size=(5, 5),
             nonlinearity=lasagne.nonlinearities.rectify,
             W = lasagne.init.GlorotUniform()
-            #nonlinearity=lasagne.nonlinearities.sigmoid
             )
     network = lasagne.layers.MaxPool2DLayer(network, pool_size=(2, 2))
 
@@ -56,7 +55,6 @@ def build_cnn(input_var=None, batch_size = None):
             lasagne.layers.dropout(network, p=.5),
             #network,
             num_units=256,
-            #nonlinearity=lasagne.nonlinearities.sigmoid
             nonlinearity=lasagne.nonlinearities.rectify,
             )
 
@@ -71,7 +69,7 @@ def build_cnn(input_var=None, batch_size = None):
 
     fc2_selected = SelectLayer(fc2, 10)
 
-    weight_decay_layers = {network_transformed_TPS:0.1, fc2:0.2}
+    weight_decay_layers = {network_transformed_TPS:0.001}
     l2_penalty = regularize_layer_params_weighted(weight_decay_layers, l2)
 
     return fc2, fc2_selected, l2_penalty, network_transformed
@@ -98,7 +96,7 @@ def extend_image(inputs, size = 40):
     return extended_images
 
 
-def main(model='mlp', num_epochs=1):
+def main(model='mlp', num_epochs=100):
     # Load the dataset
     print("Loading data...")
     # num_per_class = 100
@@ -106,8 +104,8 @@ def main(model='mlp', num_epochs=1):
     print("Using all the training data")
 
     ## Load Data##
-    X_train, y_train, _, _ = load_data("/X_train_limited_100.npy", "/Y_train_limited_100.npy", "/X_test.npy", "/Y_test.npy")
-    _, _, X_test, y_test = load_data_digit_clutter("/X_train_limited_100.npy", "/Y_train_limited_100.npy", "/X_test.npy", "/Y_test.npy")
+    X_train, y_train, X_test, y_test = load_data("/X_train_limited_100.npy", "/Y_train_limited_100.npy", "/X_test.npy", "/Y_test.npy")
+    #_, _, X_test, y_test = load_data_digit_clutter("/X_train_limited_100.npy", "/Y_train_limited_100.npy", "/X_test.npy", "/Y_test.npy")
 
     X_train = extend_image(X_train, 40)
     X_test_all = extend_image(X_test, 40)
@@ -161,12 +159,12 @@ def main(model='mlp', num_epochs=1):
 
     loss_affine_before = -predictions_deformation
 
-    #loss_affine = loss_affine_before.mean() + weight_decay
+    loss_affine = loss_affine_before.mean() + weight_decay
 
     loss_affine = loss_affine_before.mean()
 
-    loss = lasagne.objectives.multiclass_hinge_loss(predictions_deformation_for_loss, vanilla_target_var, delta = 20)
-    loss = loss.mean() + weight_decay
+    loss = lasagne.objectives.multiclass_hinge_loss(predictions_deformation_for_loss, vanilla_target_var)
+    loss = loss.mean()
 
     # This is to use the rotation that the "gradient descent" think will give the highest score for each of the classes
     train_acc_1 = T.mean(T.eq(T.argmax(predictions_deformation_for_loss, axis = 1), vanilla_target_var), dtype = theano.config.floatX)
@@ -191,7 +189,6 @@ def main(model='mlp', num_epochs=1):
     """
 
     updates_affine = lasagne.updates.adagrad(loss_affine, [affine_params], learning_rate = 0.05)
-
 
     updates_model = lasagne.updates.adagrad(loss, model_params, learning_rate = 0.01)
 
@@ -222,7 +219,7 @@ def main(model='mlp', num_epochs=1):
     cached_deformation_matrix = np.array(np.zeros((X_train.shape[0], 10, 2 * 16)), dtype = np.float32)
     for epoch in range(num_epochs):
         start_time = time.time()
-        if epoch % 50 == 0 or epoch + 1 == num_epochs:
+        if (epoch % 50 == 0 or epoch + 1 == num_epochs):
             print ("Start Evaluating...")
             test_acc = 0
             test_batches = 0
@@ -241,10 +238,12 @@ def main(model='mlp', num_epochs=1):
                 affine_params.set_value(np.array(np.zeros((batch_size * 10, 2 * 16)), dtype = np.float32))
                 for i in range(200):
                     weightsOfParams = lasagne.layers.get_all_param_values(network)
-                    train_loss, train_loss_before, final_transformed_images, _ = train_affine_fn(inputs)
-                    print(train_loss, i)
-                    print(train_loss_before[0])
-                    time.sleep(2)
+                    train_loss, train_loss_before, final_transformed_images, train_weight_decay_value = train_affine_fn(inputs)
+                    if affine_test_batches == 0:
+                        print(train_loss, i)
+                        print(train_loss_before[0])
+                        print("weight decay loss", train_weight_decay_value)
+                        #print("l2_norm: ", np.sum(np.array(weightsOfParams[0])**2))
 
                 if affine_test_batches == 0:
                     np.save(os.environ['TMP'] + "/deformed_images_epoch_%d.npy" %epoch, final_transformed_images)
@@ -268,6 +267,7 @@ def main(model='mlp', num_epochs=1):
             print("Final results:")
             print("  test accuracy:\t\t{:.2f} %".format(
                 test_acc / test_batches * 100))
+
         print("Starting training...")
         train_err = 0
         train_acc_sum_1 = 0
@@ -275,7 +275,6 @@ def main(model='mlp', num_epochs=1):
         train_batches = 0
         affine_train_batches = 0
 
-        """
         # This part is for training. In this experiment, we don't want to train at all
         if 1:
             #if epoch % 50 == -1:
@@ -291,8 +290,11 @@ def main(model='mlp', num_epochs=1):
                 for i in range(200):
                     weightsOfParams = lasagne.layers.get_all_param_values(network)
                     train_loss, train_loss_before, final_transformed_images, weight_decay_value = train_affine_fn(inputs)
-                    if i == 0 and affine_train_batches == 1:
+                    if affine_train_batches == 1 and epoch % 50 == 0:
+                        print("Iteration %d" %i)
                         print("weight_decay_value: ", weight_decay_value)
+                        print("First train loss: ", train_loss_before[0])
+                        print("Total train loss: ", train_loss)
                 cached_deformation_matrix[index] = weightsOfParams[0].reshape((-1, 10, 2 * 16))
                 affine_train_batches += 1
                 batch_loss += np.mean(train_loss_before)
@@ -316,11 +318,10 @@ def main(model='mlp', num_epochs=1):
         print("  training loss:\t\t{:.6f}".format(train_err / train_batches))
         print("  training acc 1:\t\t{:.6f}".format(train_acc_sum_1 / train_batches))
         print("  training acc 2:\t\t{:.6f}".format(train_acc_sum_2 / train_batches))
-        """
 
-        #if epoch % 500 == 0 or epoch == num_epochs - 1:
-        #    weightsOfParams = lasagne.layers.get_all_param_values(network)
-        #    np.save("../data/mnist_CNN_params_drop_out_Chi_2017_Deformation_hinge_2000_script_run_reg_0_1_MNIST_em_new_epoch%d.npy" %epoch, weightsOfParams)
+        if epoch % 500 == 0 or epoch == num_epochs - 1:
+            weightsOfParams = lasagne.layers.get_all_param_values(network)
+            np.save("../data/CNNForMNIST_tps_support_epoch%d.npy" %epoch, weightsOfParams)
 
 
 if __name__ == '__main__':
