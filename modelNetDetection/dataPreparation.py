@@ -11,10 +11,8 @@ def load_data(trainingData, trainingLabel, testingData, testingLabel, dataset="M
     testingLabel = os.environ[dataset] + testingLabel
 
     X_train = np.array(np.load(trainingData), dtype=np.float32).reshape(-1, 32, 32, 32)
-    X_train[X_train < 0] = 0.0
     Y_train = np.array(np.load(trainingLabel), dtype=np.uint8)
     X_test = np.array(np.load(testingData), dtype=np.float32).reshape(-1, 32, 32, 32)
-    X_test[X_test < 0] = 0.0
     Y_test = np.array(np.load(testingLabel), dtype=np.uint8)
 
     return X_train, Y_train, X_test, Y_test
