@@ -23,7 +23,7 @@ def build_cnn(input_var=None, batch_size=None):
     # Input layer, as usual:
     network = lasagne.layers.InputLayer(shape=(None, 1, 40, 40, 40),
                                         input_var=input_var)
-
+    network = lasagne.layers.BatchNormLayer(network)
     repeatInput = Repeat(network, 10)
 
     network = lasagne.layers.ReshapeLayer(repeatInput, (-1, 1, 40, 40, 40))

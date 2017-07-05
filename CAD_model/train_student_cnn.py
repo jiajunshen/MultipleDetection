@@ -23,10 +23,12 @@ def build_teacher_cnn(input_var=None):
     network = Conv2DLayer(
             network, num_filters=32, filter_size=(3, 3),
             #nonlinearity=lasagne.nonlinearities.sigmoid,
-            nonlinearity=lasagne.nonlinearities.rectify,
+            nonlinearity=lasagne.nonlinearities.identity,
             W=lasagne.init.GlorotUniform(), pad=(3-1)//2)
 
+    intermediate_layer = network
 
+    network = lasagne.layers.NonlinearityLayer(network, nonlinearity=nonlinearities.rectify)
 
     network = Conv2DLayer(
             network, num_filters=32, filter_size=(3, 3),
@@ -65,7 +67,7 @@ def build_teacher_cnn(input_var=None):
             num_units=7,
             nonlinearity=lasagne.nonlinearities.softmax)
 
-    intermediate_layer = network
+
 
     return network, intermediate_layer
 
@@ -78,9 +80,13 @@ def build_student_cnn(input_var=None):
     network = Conv2DLayer(
             network, num_filters=32, filter_size=(3, 3),
             #nonlinearity=lasagne.nonlinearities.sigmoid,
-            nonlinearity=lasagne.nonlinearities.rectify,
+            nonlinearity=lasagne.nonlinearities.identity,
             W=lasagne.init.GlorotUniform(), pad=(3-1)//2)
 
+
+    intermediate_layer = network
+
+    network = lasagne.layers.NonlinearityLayer(network, nonlinearity=nonlinearities.rectify)
 
 
     network = Conv2DLayer(
@@ -123,8 +129,6 @@ def build_student_cnn(input_var=None):
             nonlinearity=lasagne.nonlinearities.softmax)
 
 
-
-    intermediate_layer = network
 
     return network, intermediate_layer
 
@@ -158,16 +162,16 @@ def main(model='mlp', num_epochs=1000):
     # Load the dataset
     print("Loading data...")
 
-    X_teacher_train, y_teacher_train, _, _ = load_data("/X_plain_train_rotation.npy",
+    X_teacher_train, y_teacher_train, _, _ = load_data("/X_plain_train_rotation_100.npy",
                                                  "/Y_train_rotation.npy",
-                                                 "/X_plain_test_rotation.npy",
+                                                 "/X_plain_test_rotation_100.npy",
                                                  "/Y_test_rotation.npy",
-                                                 resize=True,
+                                                 resize=False,
                                                  size = 100)
     X_student_train, y_student_train, X_student_test, y_student_test = \
-        load_data("/X_plain_train_rotation.npy", "/Y_train_rotation.npy",
-                  "/X_plain_test.npy", "/Y_test.npy",
-                  resize=True, size=100)
+        load_data("/X_texture_train_rotation_100.npy", "/Y_train_rotation.npy",
+                  "/X_texture_test_100.npy", "/Y_test.npy",
+                  resize=False, size=100)
 
     print(X_teacher_train.shape)
     print(X_student_train.shape)
@@ -202,8 +206,8 @@ def main(model='mlp', num_epochs=1000):
                                            trainable=True)
     # updates = lasagne.updates.nesterov_momentum(
     #         loss, params, learning_rate=0.01, momentum=0.9)
-    updates = []
-    #updates = lasagne.updates.adagrad(loss, params, learning_rate = 0.01)
+    #updates = []
+    updates = lasagne.updates.adagrad(loss, params, learning_rate = 0.01)
 
     test_prediction = lasagne.layers.get_output(student_network,
                                                 deterministic=True)
@@ -218,8 +222,9 @@ def main(model='mlp', num_epochs=1000):
     train_fn = theano.function([teacher_input_var,
                                 student_input_var], [loss, test_prediction], updates=updates)
 
-    val_fn = theano.function([student_input_var, target_var],
-                             [test_loss, test_acc])
+    val_fn = theano.function([student_input_var, teacher_input_var, target_var],
+                             [test_loss, test_acc, teacher_intermediate_layer_result,
+                              student_intermediate_layer_result])
 
     # Loading the weights
 
@@ -229,11 +234,12 @@ def main(model='mlp', num_epochs=1000):
 
     weightsOfTeacherNetwork = np.load("../data/plain_rotation_network_withoutBatchNorm.npy")
 
-    network_saved_weights = np.array([weightsOfIntermediateParams[i].eval() for i in range(12)] +
-                                     [weightsOfTeacherNetwork[i] for i in range(12, weightsOfTeacherNetwork.shape[0])])
+    network_saved_weights = np.array([weightsOfIntermediateParams[i].eval() for i in range(2)] +
+                                     [weightsOfTeacherNetwork[i] for i in range(2, weightsOfTeacherNetwork.shape[0])])
 
 
     lasagne.layers.set_all_param_values(student_network, network_saved_weights)
+    lasagne.layers.set_all_param_values(teacher_network, weightsOfTeacherNetwork)
     # Finally, launch the training loop.
     print("Starting training...")
     # We iterate over epochs:
@@ -246,9 +252,9 @@ def main(model='mlp', num_epochs=1000):
                                          y_student_train, 100, shuffle=True):
             input_teacher, input_student, targets = batch
             err, prediction = train_fn(input_teacher, input_student)
-            print(prediction[0])
-            print(prediction[1])
-            time.sleep(2)
+            # print(prediction[0])
+            # print(prediction[1])
+            # time.sleep(2)
             train_err += err
             train_batches += 1
 
@@ -263,9 +269,13 @@ def main(model='mlp', num_epochs=1000):
             test_err = 0
             test_acc = 0
             test_batches = 0
+            print(X_student_test.shape)
+            print(X_student_train.shape)
             for batch in iterate_minibatches(X_student_test, y_student_test, 78, shuffle=False):
                 inputs, targets = batch
-                err, acc = val_fn(inputs, targets)
+                err, acc, tea_out, stu_out = val_fn(inputs, inputs, targets)
+                #print(tea_out[0])
+                #print(stu_out[0])
                 test_err += err
                 test_acc += acc
                 test_batches += 1
