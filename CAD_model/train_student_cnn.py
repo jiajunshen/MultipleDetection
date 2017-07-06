@@ -14,137 +14,153 @@ from lasagne.layers.dnn import MaxPool2DDNNLayer as MaxPool2DLayer
 from dataPreparation import load_data
 
 
-def build_teacher_cnn(input_var=None):
+def build_teacher_cnn(input_var=None, matching_layer=2):
 
     # Input layer, as usual:
     network = lasagne.layers.InputLayer(shape=(None, 3, 100, 100),
                                         input_var=input_var)
     #network = lasagne.layers.BatchNormLayer(network)
-    network = Conv2DLayer(
+    network_1 = Conv2DLayer(
             network, num_filters=32, filter_size=(3, 3),
             #nonlinearity=lasagne.nonlinearities.sigmoid,
             nonlinearity=lasagne.nonlinearities.identity,
             W=lasagne.init.GlorotUniform(), pad=(3-1)//2)
 
-    network = lasagne.layers.NonlinearityLayer(network, \
+    network_2 = lasagne.layers.NonlinearityLayer(network_1, \
         nonlinearity=lasagne.nonlinearities.rectify)
 
-    network = Conv2DLayer(
-            network, num_filters=32, filter_size=(3, 3),
+    network_3 = Conv2DLayer(
+            network_2, num_filters=32, filter_size=(3, 3),
             #nonlinearity=lasagne.nonlinearities.sigmoid,
             nonlinearity=lasagne.nonlinearities.identity,
             W=lasagne.init.GlorotUniform(), pad=(3-1)//2)
 
 
 
-    network = lasagne.layers.NonlinearityLayer(network, \
+    network_4 = lasagne.layers.NonlinearityLayer(network_3, \
         nonlinearity=lasagne.nonlinearities.rectify)
 
-    network = MaxPool2DLayer(network, pool_size=(2, 2))
+    network_5 = MaxPool2DLayer(network_4, pool_size=(2, 2))
 
 
-    network = Conv2DLayer(
-            network, num_filters=64, filter_size=(3, 3),
+    network_6 = Conv2DLayer(
+            network_5, num_filters=64, filter_size=(3, 3),
             #nonlinearity=lasagne.nonlinearities.sigmoid,
             nonlinearity=lasagne.nonlinearities.identity,
             W=lasagne.init.GlorotUniform(), pad=(3-1)//2)
 
-    intermediate_layer = network
 
-    network = lasagne.layers.NonlinearityLayer(network, \
+    network_7 = lasagne.layers.NonlinearityLayer(network_6, \
         nonlinearity=lasagne.nonlinearities.rectify)
 
-    network = Conv2DLayer(
-            network, num_filters=64, filter_size=(3, 3),
+    network_8 = Conv2DLayer(
+            network_7, num_filters=64, filter_size=(3, 3),
             #nonlinearity=lasagne.nonlinearities.sigmoid,
-            nonlinearity=lasagne.nonlinearities.rectify,
+            nonlinearity=lasagne.nonlinearities.identity,
             W=lasagne.init.GlorotUniform(), pad=(3-1)//2)
 
-    network = MaxPool2DLayer(network, pool_size=(2, 2))
 
-    network = lasagne.layers.DenseLayer(
-            lasagne.layers.dropout(network, p=.5),
+    network_9 = lasagne.layers.NonlinearityLayer(network_8, \
+            nonlinearity=lasagne.nonlinearities.rectify)
+
+    network_10 = MaxPool2DLayer(network_9, pool_size=(2, 2))
+
+    network_11 = lasagne.layers.DenseLayer(
+            lasagne.layers.dropout(network_10, p=.5),
             #network,
             num_units=256,
             #nonlinearity=lasagne.nonlinearities.sigmoid
-            nonlinearity=lasagne.nonlinearities.rectify,
+            nonlinearity=lasagne.nonlinearities.identity,
             )
 
-    network = lasagne.layers.DenseLayer(
-            lasagne.layers.dropout(network, p=.5),
+    network_12 = lasagne.layers.NonlinearityLayer(network_11, \
+            nonlinearity=lasagne.nonlinearities.rectify)
+
+    network_13 = lasagne.layers.DenseLayer(
+            lasagne.layers.dropout(network_12, p=.5),
             #network,
             num_units=7,
             nonlinearity=lasagne.nonlinearities.softmax)
 
 
+    network = network_13
+
+    exec("intermediate_layer = network_%d" % matching_layer)
 
     return network, intermediate_layer
 
-def build_student_cnn(input_var=None):
+def build_student_cnn(input_var=None, matching_layer=2):
 
     # Input layer, as usual:
     network = lasagne.layers.InputLayer(shape=(None, 3, 100, 100),
                                         input_var=input_var)
     #network = lasagne.layers.BatchNormLayer(network)
-    network = Conv2DLayer(
+    network_1 = Conv2DLayer(
             network, num_filters=32, filter_size=(3, 3),
             #nonlinearity=lasagne.nonlinearities.sigmoid,
             nonlinearity=lasagne.nonlinearities.identity,
             W=lasagne.init.GlorotUniform(), pad=(3-1)//2)
 
-    network = lasagne.layers.NonlinearityLayer(network, \
+    network_2 = lasagne.layers.NonlinearityLayer(network_1, \
         nonlinearity=lasagne.nonlinearities.rectify)
 
-    network = Conv2DLayer(
-            network, num_filters=32, filter_size=(3, 3),
+    network_3 = Conv2DLayer(
+            network_2, num_filters=32, filter_size=(3, 3),
             #nonlinearity=lasagne.nonlinearities.sigmoid,
             nonlinearity=lasagne.nonlinearities.identity,
             W=lasagne.init.GlorotUniform(), pad=(3-1)//2)
 
 
 
-    network = lasagne.layers.NonlinearityLayer(network, \
+    network_4 = lasagne.layers.NonlinearityLayer(network_3, \
         nonlinearity=lasagne.nonlinearities.rectify)
 
-    network = MaxPool2DLayer(network, pool_size=(2, 2))
+    network_5 = MaxPool2DLayer(network_4, pool_size=(2, 2))
 
 
-    network = Conv2DLayer(
-            network, num_filters=64, filter_size=(3, 3),
+    network_6 = Conv2DLayer(
+            network_5, num_filters=64, filter_size=(3, 3),
             #nonlinearity=lasagne.nonlinearities.sigmoid,
             nonlinearity=lasagne.nonlinearities.identity,
             W=lasagne.init.GlorotUniform(), pad=(3-1)//2)
 
-    intermediate_layer = network
 
-    network = lasagne.layers.NonlinearityLayer(network, \
+    network_7 = lasagne.layers.NonlinearityLayer(network_6, \
         nonlinearity=lasagne.nonlinearities.rectify)
 
-    network = Conv2DLayer(
-            network, num_filters=64, filter_size=(3, 3),
+    network_8 = Conv2DLayer(
+            network_7, num_filters=64, filter_size=(3, 3),
             #nonlinearity=lasagne.nonlinearities.sigmoid,
-            nonlinearity=lasagne.nonlinearities.rectify,
+            nonlinearity=lasagne.nonlinearities.identity,
             W=lasagne.init.GlorotUniform(), pad=(3-1)//2)
 
-    network = MaxPool2DLayer(network, pool_size=(2, 2))
 
+    network_9 = lasagne.layers.NonlinearityLayer(network_8, \
+            nonlinearity=lasagne.nonlinearities.rectify)
 
+    network_10 = MaxPool2DLayer(network_9, pool_size=(2, 2))
 
-    network = lasagne.layers.DenseLayer(
-            lasagne.layers.dropout(network, p=.5),
+    network_11 = lasagne.layers.DenseLayer(
+            lasagne.layers.dropout(network_10, p=.5),
             #network,
             num_units=256,
             #nonlinearity=lasagne.nonlinearities.sigmoid
-            nonlinearity=lasagne.nonlinearities.rectify,
+            nonlinearity=lasagne.nonlinearities.identity,
             )
 
-    network = lasagne.layers.DenseLayer(
-            lasagne.layers.dropout(network, p=.5),
+    network_12 = lasagne.layers.NonlinearityLayer(network_11, \
+            nonlinearity=lasagne.nonlinearities.rectify)
+
+    network_13 = lasagne.layers.DenseLayer(
+            lasagne.layers.dropout(network_12, p=.5),
             #network,
             num_units=7,
             nonlinearity=lasagne.nonlinearities.softmax)
 
 
+    network = network_13
+
+    exec("intermediate_layer = network_%d" % matching_layer)
 
     return network, intermediate_layer
 
@@ -197,9 +213,9 @@ def main(model='mlp', num_epochs=1000):
     target_var = T.ivector('targets')
 
     teacher_network, teacher_intermediate_layer = \
-        build_teacher_cnn(teacher_input_var)
+        build_teacher_cnn(teacher_input_var, 7)
     student_network, student_intermediate_layer = \
-        build_student_cnn(student_input_var)
+        build_student_cnn(student_input_var, 7)
 
     teacher_intermediate_layer_result = \
         lasagne.layers.get_output(teacher_intermediate_layer,
