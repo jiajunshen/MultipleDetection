@@ -26,15 +26,19 @@ def build_teacher_cnn(input_var=None):
             nonlinearity=lasagne.nonlinearities.identity,
             W=lasagne.init.GlorotUniform(), pad=(3-1)//2)
 
-    intermediate_layer = network
-
-    network = lasagne.layers.NonlinearityLayer(network, nonlinearity=nonlinearities.rectify)
+    network = lasagne.layers.NonlinearityLayer(network, \
+        nonlinearity=lasagne.nonlinearities.rectify)
 
     network = Conv2DLayer(
             network, num_filters=32, filter_size=(3, 3),
             #nonlinearity=lasagne.nonlinearities.sigmoid,
-            nonlinearity=lasagne.nonlinearities.rectify,
+            nonlinearity=lasagne.nonlinearities.identity,
             W=lasagne.init.GlorotUniform(), pad=(3-1)//2)
+
+
+
+    network = lasagne.layers.NonlinearityLayer(network, \
+        nonlinearity=lasagne.nonlinearities.rectify)
 
     network = MaxPool2DLayer(network, pool_size=(2, 2))
 
@@ -42,8 +46,13 @@ def build_teacher_cnn(input_var=None):
     network = Conv2DLayer(
             network, num_filters=64, filter_size=(3, 3),
             #nonlinearity=lasagne.nonlinearities.sigmoid,
-            nonlinearity=lasagne.nonlinearities.rectify,
+            nonlinearity=lasagne.nonlinearities.identity,
             W=lasagne.init.GlorotUniform(), pad=(3-1)//2)
+
+    intermediate_layer = network
+
+    network = lasagne.layers.NonlinearityLayer(network, \
+        nonlinearity=lasagne.nonlinearities.rectify)
 
     network = Conv2DLayer(
             network, num_filters=64, filter_size=(3, 3),
@@ -83,17 +92,19 @@ def build_student_cnn(input_var=None):
             nonlinearity=lasagne.nonlinearities.identity,
             W=lasagne.init.GlorotUniform(), pad=(3-1)//2)
 
-
-    intermediate_layer = network
-
-    network = lasagne.layers.NonlinearityLayer(network, nonlinearity=nonlinearities.rectify)
-
+    network = lasagne.layers.NonlinearityLayer(network, \
+        nonlinearity=lasagne.nonlinearities.rectify)
 
     network = Conv2DLayer(
             network, num_filters=32, filter_size=(3, 3),
             #nonlinearity=lasagne.nonlinearities.sigmoid,
-            nonlinearity=lasagne.nonlinearities.rectify,
+            nonlinearity=lasagne.nonlinearities.identity,
             W=lasagne.init.GlorotUniform(), pad=(3-1)//2)
+
+
+
+    network = lasagne.layers.NonlinearityLayer(network, \
+        nonlinearity=lasagne.nonlinearities.rectify)
 
     network = MaxPool2DLayer(network, pool_size=(2, 2))
 
@@ -101,8 +112,13 @@ def build_student_cnn(input_var=None):
     network = Conv2DLayer(
             network, num_filters=64, filter_size=(3, 3),
             #nonlinearity=lasagne.nonlinearities.sigmoid,
-            nonlinearity=lasagne.nonlinearities.rectify,
+            nonlinearity=lasagne.nonlinearities.identity,
             W=lasagne.init.GlorotUniform(), pad=(3-1)//2)
+
+    intermediate_layer = network
+
+    network = lasagne.layers.NonlinearityLayer(network, \
+        nonlinearity=lasagne.nonlinearities.rectify)
 
     network = Conv2DLayer(
             network, num_filters=64, filter_size=(3, 3),
@@ -234,8 +250,8 @@ def main(model='mlp', num_epochs=1000):
 
     weightsOfTeacherNetwork = np.load("../data/plain_rotation_network_withoutBatchNorm.npy")
 
-    network_saved_weights = np.array([weightsOfIntermediateParams[i].eval() for i in range(2)] +
-                                     [weightsOfTeacherNetwork[i] for i in range(2, weightsOfTeacherNetwork.shape[0])])
+    network_saved_weights = np.array([weightsOfIntermediateParams[i].eval() for i in range(6)] +
+                                     [weightsOfTeacherNetwork[i] for i in range(6, weightsOfTeacherNetwork.shape[0])])
 
 
     lasagne.layers.set_all_param_values(student_network, network_saved_weights)

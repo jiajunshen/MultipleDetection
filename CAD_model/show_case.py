@@ -25,6 +25,9 @@ file_name = '/hdd/Documents/Data/IKEA/IKEA_bed_BRIMNES/nojitter_png_4b534bead1e0
 file_name = '/hdd/Downloads/ShapeNetCore.v2/02691156/5294c39d2a57bd7e5cad6226edb8e82/models/model_normalized.obj'
 file_name = '/hdd/Downloads/ShapeNetCore.v2/02691156/73945c1b294716e1d041917556492646/models/model_normalized.obj'
 file_name = '/home/jiajun/Desktop/untitled.obj'
+file_name = '/hdd/Documents/Data/ShapeNetCoreV2/02691156/1a04e3eab45ca15dd86060f189eb133/models/model_normalized.obj'
+file_name = '/hdd/Documents/Data/ShapeNetCoreV2/02691156/f390b1b28b6dda03dc57b3e43c28d486/models/model_new.obj'
+file_name = '/hdd/Documents/Data/ShapeNetCoreV2/02691156/6341436b6a9df0c6683651cbc8e49e4f/models/model_new.obj'
 
 
 
