@@ -213,9 +213,9 @@ def main(model='mlp', num_epochs=1000):
     target_var = T.ivector('targets')
 
     teacher_network, teacher_intermediate_layer = \
-        build_teacher_cnn(teacher_input_var, 7)
+        build_teacher_cnn(teacher_input_var, 5)
     student_network, student_intermediate_layer = \
-        build_student_cnn(student_input_var, 7)
+        build_student_cnn(student_input_var, 5)
 
     teacher_intermediate_layer_result = \
         lasagne.layers.get_output(teacher_intermediate_layer,
@@ -266,8 +266,9 @@ def main(model='mlp', num_epochs=1000):
 
     weightsOfTeacherNetwork = np.load("../data/plain_rotation_network_withoutBatchNorm.npy")
 
-    network_saved_weights = np.array([weightsOfIntermediateParams[i].eval() for i in range(6)] +
-                                     [weightsOfTeacherNetwork[i] for i in range(6, weightsOfTeacherNetwork.shape[0])])
+    teacher_weights = [weightsOfTeacherNetwork[i] for i in range(4, 12)]
+
+    network_saved_weights = [weightsOfIntermediateParams[i].eval() for i in range(4)] + teacher_weights
 
 
     lasagne.layers.set_all_param_values(student_network, network_saved_weights)

@@ -162,7 +162,7 @@ def main(model='mlp', num_epochs=50):
                 test_acc / test_batches * 100))
 
     weightsOfParams = lasagne.layers.get_all_param_values(network)
-    #np.save("../data/plain_rotation_network_withoutBatchNorm.npy", weightsOfParams)
+    np.save("../data/plain_rotation_network_withoutBatchNorm.npy", weightsOfParams)
 
 
 if __name__ == '__main__':

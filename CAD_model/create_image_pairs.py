@@ -34,22 +34,19 @@ def _gl_vector(array, *args):
 #      if rotation > 720: rotation = 0
 
 def create_image_pairs(filename_list, save_file_list):
+    nRotation = 4
+    degreePerRotation = 360 // nRotation
 
     for filename, save_file in zip(filename_list, save_file_list):
-        for i in range(36):
+        for i in range(nRotation):
             try:
-                a = Test(filename, False, save_file, 10 * i)
+                a = Test(filename, False, save_file, degreePerRotation * i)
                 a.save_image()
-                b = Test(filename, True, save_file, 10 * i)
+                b = Test(filename, True, save_file, degreePerRotation * i)
                 b.save_image()
             except:
                 continue
-
-        # a = Test(filename, False, save_file, 0)
-        # a.save_image()
-        # b = Test(filename, True, save_file, 0)
-        # b.save_image()
-
+    
     pyglet.app.run()
     pyglet.app.stop()
 
@@ -110,16 +107,20 @@ class Test(object):
         self.meshes.draw()
         colorbuffer = pyglet.image.get_buffer_manager().get_color_buffer()
         if self.draw_texture:
-            colorbuffer.save("/hdd/Documents/Data/IKEA_PAIR/CAD_Texture_rotation/" +
+            colorbuffer.save("/hdd/Documents/Data/ShapeNetCoreV2/texture_image_4" +
                             self.save_file + "_%d" %self.rotation + ".png")
+            #colorbuffer.save("/hdd/Documents/Data/IKEA_PAIR/CAD_Texture_rotation/" +
+            #                self.save_file + "_%d" %self.rotation + ".png")
             # colorbuffer.save("/hdd/Documents/Data/IKEA_PAIR/CAD_Texture/" +
             #                  self.save_file + ".png")
             #colorbuffer.save("/home/jiajun/Desktop/1.png")
             self.current_window.close()
             del self.current_window
         else:
-            colorbuffer.save("/hdd/Documents/Data/IKEA_PAIR/CAD_Plain_rotation/" +
+            colorbuffer.save("/hdd/Documents/Data/ShapeNetCoreV2/plain_image_4" +
                             self.save_file + "_%d" %self.rotation + ".png")
+            #colorbuffer.save("/hdd/Documents/Data/IKEA_PAIR/CAD_Plain_rotation/" +
+            #                self.save_file + "_%d" %self.rotation + ".png")
             # colorbuffer.save("/hdd/Documents/Data/IKEA_PAIR/CAD_Plain/" +
             #                  self.save_file + ".png")
             #colorbuffer.save("/home/jiajun/Desktop/2.png")
