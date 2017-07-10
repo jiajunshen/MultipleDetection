@@ -80,16 +80,17 @@ def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
         yield inputs[excerpt], targets[excerpt]
 
 
-def main(model='mlp', num_epochs=200):
+def main(model='mlp', num_epochs=50):
     # Load the dataset
     print("Loading data...")
 
-    X_train, y_train, X_test, y_test = load_data("/X_plain_train_rotation.npy",
+    X_train, y_train, X_test, y_test = load_data("/X_plain_train_rotation_100.npy",
                                                  "/Y_train_rotation.npy",
-                                                 "/X_plain_test.npy",
+                                                 "/X_plain_test_100.npy",
                                                  "/Y_test.npy",
-                                                 resize=True,
+                                                 resize=False,
                                                  size = 100)
+
 
     print(X_train.shape, X_test.shape)
 
@@ -115,9 +116,9 @@ def main(model='mlp', num_epochs=200):
     test_acc = T.mean(T.eq(T.argmax(test_prediction, axis=1), target_var),
                       dtype=theano.config.floatX)
 
-    train_fn = theano.function([input_var, target_var], loss, updates=updates)
+    train_fn = theano.function([input_var, target_var], [loss, prediction], updates=updates)
 
-    val_fn = theano.function([input_var, target_var], [test_loss, test_acc])
+    val_fn = theano.function([input_var, target_var], [test_loss, test_acc, test_prediction])
 
     # Finally, launch the training loop.
     print("Starting training...")
@@ -129,7 +130,11 @@ def main(model='mlp', num_epochs=200):
         start_time = time.time()
         for batch in iterate_minibatches(X_train, y_train, 100, shuffle=True):
             inputs, targets = batch
-            train_err += train_fn(inputs, targets)
+            cur_loss, cur_pre = train_fn(inputs, targets)
+            train_batches == 0
+            # print(cur_pre[:5])
+            # print(cur_loss)
+            train_err += cur_loss
             train_batches += 1
 
 
@@ -145,7 +150,9 @@ def main(model='mlp', num_epochs=200):
             test_batches = 0
             for batch in iterate_minibatches(X_test, y_test, 78, shuffle=False):
                 inputs, targets = batch
-                err, acc = val_fn(inputs, targets)
+                err, acc, pre = val_fn(inputs, targets)
+                if test_batches == 0:
+                    print(pre[:5])
                 test_err += err
                 test_acc += acc
                 test_batches += 1

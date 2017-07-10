@@ -21,6 +21,7 @@ def load_data(trainingData, trainingLabel,
     Y_test = np.array(np.load(testingLabel),
                       dtype = np.uint8)
 
+    print("resizing....")
     if resize:
         X_train = np.array([misc.imresize(X_train[i],
                                           size = (size, size, 3)) /255.0
@@ -28,9 +29,13 @@ def load_data(trainingData, trainingLabel,
         X_test = np.array([misc.imresize(X_test[i],
                                          size = (size, size, 3)) /255.0
                            for i in range(X_test.shape[0])], dtype=np.float32)
+        np.save(trainingData + "_100.npy", X_train)
+        np.save(testingData + "_100.npy", X_test)
 
     X_train = np.rollaxis(X_train, 3, 1)
     X_test = np.rollaxis(X_test, 3, 1)
+
+    print("downresizing....")
 
 
     return X_train, Y_train, X_test, Y_test
