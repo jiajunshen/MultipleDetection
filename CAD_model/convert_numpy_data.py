@@ -32,7 +32,13 @@ for f in plain_files:
         plain_images.append(np.asarray(plain_images_tmp, dtype=np.float32))
         plain_images_tmp = []
 
+if len(plain_images_tmp) != 0:
+    plain_images.append(np.asarray(plain_images_tmp, dtype=np.float32))
+
 plain_images = np.vstack(plain_images)
+np.save("/hdd/Documents/Data/IKEA_PAIR/X_plain_unlabel.npy", plain_images)
+plain_images_sample = plain_images[:10]
+del plain_images
 
 texture_images = []
 texture_images_tmp = []
@@ -54,12 +60,19 @@ for f in texture_files:
         texture_images.append(np.asarray(texture_images_tmp, dtype=np.float32))
         texture_images_tmp = []
 
+if len(texture_images_tmp) != 0:
+    texture_images.append(np.asarray(texture_images_tmp, dtype=np.float32))
+
 texture_images = np.vstack(texture_images)
+
+np.save("/hdd/Documents/Data/IKEA_PAIR/X_texture_unlabel.npy", texture_images)
+texture_images_sample = texture_images[:10]
+del texture_images
 
 show_image = np.zeros((1000, 5000, 3), dtype =np.float32)
 for i in range(10):
-    show_image[:500, i * 500:i * 500 + 500] = plain_images[i][:,:,:]
-    show_image[500:1000, i * 500:i * 500 + 500] = texture_images[i][:,:,:]
+    show_image[:500, i * 500:i * 500 + 500] = plain_images_sample[i][:,:,:]
+    show_image[500:1000, i * 500:i * 500 + 500] = texture_images_sample[i][:,:,:]
 
 import matplotlib.pylab as plt
 plt.figure(figsize=(15,20),dpi=200)
@@ -67,5 +80,3 @@ plt.figure(figsize=(15,20),dpi=200)
 plt.imshow(show_image)
 
 
-np.save("/hdd/Documents/Data/IKEA_PAIR/X_plain_unlabel.npy", plain_images)
-np.save("/hdd/Documents/Data/IKEA_PAIR/X_texture_unlabel.npy", texture_images)
