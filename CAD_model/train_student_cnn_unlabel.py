@@ -164,7 +164,7 @@ def build_student_cnn(input_var=None, matching_layer=2):
 
     return network, intermediate_layer
 
-def iterate_minibatches_pair(inputs_teacher, inputs_student, targets, batchsize, shuffle=False):
+def iterate_minibatches_pair(inputs_teacher, inputs_student, batchsize, shuffle=False):
     if shuffle:
         indices = np.arange(len(inputs_teacher))
         np.random.shuffle(indices)
@@ -173,7 +173,7 @@ def iterate_minibatches_pair(inputs_teacher, inputs_student, targets, batchsize,
             excerpt = indices[start_idx:start_idx + batchsize]
         else:
             excerpt = slice(start_idx, start_idx + batchsize)
-        yield inputs_teacher[excerpt], inputs_student[excerpt], targets[excerpt]
+        yield inputs_teacher[excerpt], inputs_student[excerpt]
 
 
 def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
@@ -200,7 +200,7 @@ def main(model='mlp', num_epochs=1000):
                                                  resize=False,
                                                  size = 100)
     X_student_train, y_student_train, X_student_test, y_student_test = \
-        load_data("/X_plain_unlabel_100.npy", "/Y_train_rotation.npy",
+        load_data("/X_texture_unlabel_100.npy", "/Y_train_rotation.npy",
                   "/X_texture_test_100.npy", "/Y_test.npy",
                   resize=False, size=100)
 
@@ -281,8 +281,8 @@ def main(model='mlp', num_epochs=1000):
         train_batches = 0
         start_time = time.time()
         for batch in iterate_minibatches_pair(X_teacher_train, X_student_train,
-                                         y_student_train, 100, shuffle=True):
-            input_teacher, input_student, targets = batch
+                                         100, shuffle=True):
+            input_teacher, input_student = batch
             err, prediction = train_fn(input_teacher, input_student)
             # print(prediction[0])
             # print(prediction[1])
