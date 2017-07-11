@@ -165,7 +165,6 @@ def build_student_cnn(input_var=None, matching_layer=2):
     return network, intermediate_layer
 
 def iterate_minibatches_pair(inputs_teacher, inputs_student, targets, batchsize, shuffle=False):
-    assert len(inputs_teacher) == len(targets)
     if shuffle:
         indices = np.arange(len(inputs_teacher))
         np.random.shuffle(indices)
@@ -194,11 +193,11 @@ def main(model='mlp', num_epochs=1000):
     # Load the dataset
     print("Loading data...")
 
-    X_teacher_train, y_teacher_train, _, _ = load_data("/X_plain_unlabel.npy",
+    X_teacher_train, y_teacher_train, _, _ = load_data("/X_plain_unlabel_100.npy",
                                                  "/Y_train_rotation.npy",
-                                                 "/X_texture_unlabel.npy",
+                                                 "/X_texture_unlabel_100.npy",
                                                  "/Y_test_rotation.npy",
-                                                 resize=True,
+                                                 resize=False,
                                                  size = 100)
     X_student_train, y_student_train, X_student_test, y_student_test = \
         load_data("/X_plain_unlabel_100.npy", "/Y_train_rotation.npy",
