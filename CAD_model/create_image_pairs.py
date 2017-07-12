@@ -70,7 +70,7 @@ class Test(object):
         self.rotation = degree
         self.meshes = pywavefront.Wavefront(filename, draw_texture)
         self.trimesh_object = trimesh.load_mesh(filename)
-        self.current_window = pyglet.window.Window(500, 500, resizable=True)
+        self.current_window = pyglet.window.Window(100, 100, resizable=True)
         self.mesh_centroid = self.trimesh_object.centroid
         self.radius = np.max(self.trimesh_object.extents)
         self.draw_texture = draw_texture
@@ -119,7 +119,7 @@ class Test(object):
         self.meshes.draw()
         colorbuffer = pyglet.image.get_buffer_manager().get_color_buffer()
         if self.draw_texture:
-            colorbuffer.save("/hdd/Documents/Data/ShapeNetCoreV2/texture_image_random" +
+            colorbuffer.save("/hdd/Documents/Data/ShapeNetCoreV2/texture_image_random/" +
                             self.save_file + "_%d" %self.rotation + ".png")
             #colorbuffer.save("/hdd/Documents/Data/IKEA_PAIR/CAD_Texture_rotation/" +
             #                self.save_file + "_%d" %self.rotation + ".png")
@@ -129,7 +129,7 @@ class Test(object):
             self.current_window.close()
             del self.current_window
         else:
-            colorbuffer.save("/hdd/Documents/Data/ShapeNetCoreV2/plain_image_random" +
+            colorbuffer.save("/hdd/Documents/Data/ShapeNetCoreV2/plain_image_random/" +
                             self.save_file + "_%d" %self.rotation + ".png")
             #colorbuffer.save("/hdd/Documents/Data/IKEA_PAIR/CAD_Plain_rotation/" +
             #                self.save_file + "_%d" %self.rotation + ".png")
