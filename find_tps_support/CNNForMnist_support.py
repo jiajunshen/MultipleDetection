@@ -65,11 +65,11 @@ def build_cnn(input_var=None, batch_size = None):
             num_units=10,
             )
 
-    network_transformed = lasagne.layers.ReshapeLayer(network_transformed_TPS, (-1, 10, 10, 40, 40))
+    network_transformed = lasagne.layers.ReshapeLayer(network_transformed_TPS, (-1, 10, 40, 40))
 
     fc2_selected = SelectLayer(fc2, 10)
 
-    weight_decay_layers = {network_transformed_TPS:0.001}
+    weight_decay_layers = {network_transformed_TPS:0.1}
     l2_penalty = regularize_layer_params_weighted(weight_decay_layers, l2)
 
     return fc2, fc2_selected, l2_penalty, network_transformed
@@ -96,7 +96,7 @@ def extend_image(inputs, size = 40):
     return extended_images
 
 
-def main(model='mlp', num_epochs=100):
+def main(model='mlp', num_epochs=500):
     # Load the dataset
     print("Loading data...")
     # num_per_class = 100
@@ -105,15 +105,15 @@ def main(model='mlp', num_epochs=100):
 
     ## Load Data##
     X_train, y_train, X_test, y_test = load_data("/X_train_limited_100.npy", "/Y_train_limited_100.npy", "/X_test.npy", "/Y_test.npy")
-    #_, _, X_test, y_test = load_data_digit_clutter("/X_train_limited_100.npy", "/Y_train_limited_100.npy", "/X_test.npy", "/Y_test.npy")
+    _, _, X_test, y_test = load_data_digit_clutter("/X_train_limited_100.npy", "/Y_train_limited_100.npy", "/X_test.npy", "/Y_test.npy")
 
     X_train = extend_image(X_train, 40)
     X_test_all = extend_image(X_test, 40)
-    X_test = extend_image(X_test, 40)[:2000]
+    X_test = extend_image(X_test, 40)
 
     y_train = y_train
     y_test_all = y_test[:]
-    y_test = y_test[:2000]
+    y_test = y_test
 
 
     ## Define Batch Size ##
@@ -188,7 +188,7 @@ def main(model='mlp', num_epochs=100):
         updates_affine[param] = param - 0.1 * grad
     """
 
-    updates_affine = lasagne.updates.adagrad(loss_affine, [affine_params], learning_rate = 0.05)
+    updates_affine = lasagne.updates.momentum(loss_affine, [affine_params], learning_rate = 0.3)
 
     updates_model = lasagne.updates.adagrad(loss, model_params, learning_rate = 0.01)
 
@@ -212,14 +212,16 @@ def main(model='mlp', num_epochs=100):
 
 
     # Finally, launch the training loop.
-        #    weightsOfParams = lasagne.layers.get_all_param_values(network)
-    # weightsOfParams = np.load("../data/mnist_CNN_params_drop_out_Chi_2017_Deformation_hinge_2000_script_run_reg_0_1_MNIST_em_new_epoch1500.npy")
-    # lasagne.layers.set_all_param_values(network, weightsOfParams)
+    weightsOfParams = lasagne.layers.get_all_param_values(network)
+    weightsOfParams = np.load("../data/CNNForMNIST_tps_support_epoch99.npy")
+    #lasagne.layers.set_all_param_values(network, weightsOfParams)
 
-    cached_deformation_matrix = np.array(np.zeros((X_train.shape[0], 10, 2 * 16)), dtype = np.float32)
+    FindSupportSwitch = True
+    EvaluationSwitch = True
+    TrainSwitch = True
     for epoch in range(num_epochs):
         start_time = time.time()
-        if (epoch % 50 == 0 or epoch + 1 == num_epochs):
+        if (epoch % 10 == 0 or epoch + 1 == num_epochs) and EvaluationSwitch and epoch != 0:
             print ("Start Evaluating...")
             test_acc = 0
             test_batches = 0
@@ -239,22 +241,24 @@ def main(model='mlp', num_epochs=100):
                 for i in range(200):
                     weightsOfParams = lasagne.layers.get_all_param_values(network)
                     train_loss, train_loss_before, final_transformed_images, train_weight_decay_value = train_affine_fn(inputs)
+                    """
                     if affine_test_batches == 0:
                         print(train_loss, i)
                         print(train_loss_before[0])
                         print("weight decay loss", train_weight_decay_value)
                         #print("l2_norm: ", np.sum(np.array(weightsOfParams[0])**2))
-
+                    """
+                """
                 if affine_test_batches == 0:
                     np.save(os.environ['TMP'] + "/deformed_images_epoch_%d.npy" %epoch, final_transformed_images)
                     np.save(os.environ['TMP'] + "/deformed_images_original_epoch_%d.npy" %epoch, inputs)
                     np.save(os.environ['TMP'] + "/deformed_images_label_epoch_%d" %epoch, targets)
-
+                """
 
                 cached_deformation_matrix_test[index] = weightsOfParams[0].reshape((-1, 10, 2 * 16))
 
                 affine_test_batches += 1
-                print(affine_test_batches)
+                #print(affine_test_batches)
 
 
             for batch in iterate_minibatches(X_test, y_test, batch_size, shuffle = False):
@@ -268,60 +272,91 @@ def main(model='mlp', num_epochs=100):
             print("  test accuracy:\t\t{:.2f} %".format(
                 test_acc / test_batches * 100))
 
-        print("Starting training...")
-        train_err = 0
-        train_acc_sum_1 = 0
-        train_acc_sum_2 = 0
-        train_batches = 0
-        affine_train_batches = 0
+        # Start finding support
+        if FindSupportSwitch:
+            print("Finding Support....")
+            final_transformed_images = [None for i in range(10)]
 
-        # This part is for training. In this experiment, we don't want to train at all
-        if 1:
-            #if epoch % 50 == -1:
-            print("inside")
-            weightsOfParams = lasagne.layers.get_all_param_values(network)
-            batch_loss = 0
             for batch in iterate_minibatches(X_train, y_train, batch_size, shuffle=False):
                 inputs, targets, index = batch
                 inputs = inputs.reshape((batch_size, 1, 40, 40))
 
                 affine_params.set_value(np.array(np.zeros((batch_size * 10, 2 * 16)), dtype = np.float32))
-                final_transformed_images = None
+                transformed_image_train = None
                 for i in range(200):
+                    _, _, transformed_image_train, _ = train_affine_fn(inputs)
                     weightsOfParams = lasagne.layers.get_all_param_values(network)
-                    train_loss, train_loss_before, final_transformed_images, weight_decay_value = train_affine_fn(inputs)
-                    if affine_train_batches == 1 and epoch % 50 == 0:
-                        print("Iteration %d" %i)
-                        print("weight_decay_value: ", weight_decay_value)
-                        print("First train loss: ", train_loss_before[0])
-                        print("Total train loss: ", train_loss)
-                cached_deformation_matrix[index] = weightsOfParams[0].reshape((-1, 10, 2 * 16))
-                affine_train_batches += 1
-                batch_loss += np.mean(train_loss_before)
-                print(affine_train_batches)
-            print(batch_loss / affine_train_batches)
-            print (time.time() - start_time)
+                #print(transformed_image_train.shape)
+                for i in range(len(targets)):
+                    if final_transformed_images[targets[i]] is not None:
+                        final_transformed_images[targets[i]] += transformed_image_train[i, targets[i]]
+                    else:
+                        final_transformed_images[targets[i]] = transformed_image_train[i, targets[i]]
 
-        if 1:
-            for batch in iterate_minibatches(X_train, y_train, batch_size, shuffle=True):
-                inputs, targets, index = batch
-                affine_params.set_value(cached_deformation_matrix[index].reshape((-1, 2 * 16)))
-                inputs = inputs.reshape((batch_size, 1, 40, 40))
-                train_loss_value, train_acc_value_1, train_acc_value_2 = train_model_fn(inputs, targets)
-                train_err += train_loss_value
-                train_acc_sum_1 += train_acc_value_1
-                train_acc_sum_2 += train_acc_value_2
-                train_batches += 1
-        # Then we print the results for this epoch:
-        print("Epoch {} of {} took {:.3f}s".format(
-            epoch + 1, num_epochs, time.time() - start_time))
-        print("  training loss:\t\t{:.6f}".format(train_err / train_batches))
-        print("  training acc 1:\t\t{:.6f}".format(train_acc_sum_1 / train_batches))
-        print("  training acc 2:\t\t{:.6f}".format(train_acc_sum_2 / train_batches))
+            for i in range(10):
+                final_transformed_images[i] /= 100.0
 
-        if epoch % 500 == 0 or epoch == num_epochs - 1:
-            weightsOfParams = lasagne.layers.get_all_param_values(network)
-            np.save("../data/CNNForMNIST_tps_support_epoch%d.npy" %epoch, weightsOfParams)
+            np.save(os.environ['TMP'] + "/deformed_image_support_new.npy", final_transformed_images)
+
+
+        cached_deformation_matrix = np.array(np.zeros((X_train.shape[0], 10, 2 * 16)), dtype = np.float32)
+
+        if TrainSwitch:
+            print("Starting training...")
+            train_err = 0
+            train_acc_sum_1 = 0
+            train_acc_sum_2 = 0
+            train_batches = 0
+            affine_train_batches = 0
+
+            # This part is for training. In this experiment, we don't want to train at all
+            if 1:
+                #print("inside")
+                weightsOfParams = lasagne.layers.get_all_param_values(network)
+                batch_loss = 0
+                for batch in iterate_minibatches(X_train, y_train, batch_size, shuffle=False):
+                    inputs, targets, index = batch
+                    inputs = inputs.reshape((batch_size, 1, 40, 40))
+
+                    affine_params.set_value(np.array(np.zeros((batch_size * 10, 2 * 16)), dtype = np.float32))
+                    final_transformed_images = None
+                    for i in range(200):
+                        weightsOfParams = lasagne.layers.get_all_param_values(network)
+                        train_loss, train_loss_before, final_transformed_images, weight_decay_value = train_affine_fn(inputs)
+                        """
+                        if affine_train_batches == 1 and epoch % 50 == 0:
+                            print("Iteration %d" %i)
+                            print("weight_decay_value: ", weight_decay_value)
+                            print("First train loss: ", train_loss_before[0])
+                            print("Total train loss: ", train_loss)
+                        """
+                    cached_deformation_matrix[index] = weightsOfParams[0].reshape((-1, 10, 2 * 16))
+                    affine_train_batches += 1
+                    batch_loss += np.mean(train_loss_before)
+                    #print(affine_train_batches)
+                print(batch_loss / affine_train_batches)
+                print (time.time() - start_time)
+
+            if 1:
+                for batch in iterate_minibatches(X_train, y_train, batch_size, shuffle=True):
+                    inputs, targets, index = batch
+                    affine_params.set_value(cached_deformation_matrix[index].reshape((-1, 2 * 16)))
+                    inputs = inputs.reshape((batch_size, 1, 40, 40))
+                    train_loss_value, train_acc_value_1, train_acc_value_2 = train_model_fn(inputs, targets)
+                    train_err += train_loss_value
+                    train_acc_sum_1 += train_acc_value_1
+                    train_acc_sum_2 += train_acc_value_2
+                    train_batches += 1
+            # Then we print the results for this epoch:
+            print("Epoch {} of {} took {:.3f}s".format(
+                epoch + 1, num_epochs, time.time() - start_time))
+            print("  training loss:\t\t{:.6f}".format(train_err / train_batches))
+            print("  training acc 1:\t\t{:.6f}".format(train_acc_sum_1 / train_batches))
+            print("  training acc 2:\t\t{:.6f}".format(train_acc_sum_2 / train_batches))
+
+            if epoch % 500 == 0 or epoch == num_epochs - 1:
+                weightsOfParams = lasagne.layers.get_all_param_values(network)
+                np.save("../data/CNNForMNIST_tps_support_epoch_new%d.npy" %epoch, weightsOfParams)
 
 
 if __name__ == '__main__':
