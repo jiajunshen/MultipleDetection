@@ -1,6 +1,6 @@
 IKEA_plain_directory = "/hdd/Documents/Data/ShapeNetCoreV2/plain_image_random/"
 IKEA_texture_directory = "/hdd/Documents/Data/ShapeNetCoreV2/texture_image_random/"
-back_directory = "/hdd/Documents/Data/ShapeNetCoreV2/bkg_image/road/"
+back_directory = "/hdd/Documents/Data/ShapeNetCoreV2/bkg_image/sky/"
 
 from os import listdir
 from os.path import isfile, join
@@ -15,8 +15,10 @@ bkg_img_path = [join(back_directory, f) for f in listdir(back_directory) if isfi
 
 for f, g in zip(IKEA_plain_img_path, IKEA_texture_img_path):
 
+    """
     if f.split('_')[2] != "random/02958343":
         continue
+    """
     image_f = misc.imread(f)
     mask_f = np.array(np.product(image_f, axis = 2) == 237 * 237 * 255 * 255).reshape(500,500,1)
     mask_all_f = np.repeat(mask_f, 3, axis = 2)
@@ -63,10 +65,35 @@ for f, g in zip(IKEA_plain_img_path, IKEA_texture_img_path):
         bkg_image_index = np.random.randint(len(bkg_img_path))
         bkg_image = misc.imresize(misc.imread(bkg_img_path[bkg_image_index]), (2 * extend,2 * extend,3)) / 255.0
 
+    """ 
     new_image_final_f = bkg_image * mask_all_f + new_image_f * (1 - mask_all_f)
     new_image_final_g = bkg_image * mask_all_g + new_image_g * (1 - mask_all_g)
-
     new_image_final_f = misc.imresize(new_image_final_f, (32, 32, 3)) / 255.0
     new_image_final_g = misc.imresize(new_image_final_g, (32, 32, 3)) / 255.0
-    misc.imsave("/hdd/Documents/Data/ShapeNetCoreV2/real_plain_image/" + f.split("/")[6], new_image_final_f)
-    misc.imsave("/hdd/Documents/Data/ShapeNetCoreV2/real_texture_image/" + f.split("/")[6], new_image_final_g)
+    misc.imsave("/hdd/Documents/Data/ShapeNetCoreV2/real_plain_image_v2/" + f.split("/")[6], new_image_final_f)
+    misc.imsave("/hdd/Documents/Data/ShapeNetCoreV2/real_texture_image_v2/" + f.split("/")[6], new_image_final_g)
+    """
+
+    bkg_image_downscale = misc.imresize(bkg_image, (32, 32, 3))
+    mask_downscale = 1 - (misc.imresize(1 - mask_all_f, (32, 32, 3)) > 0)
+    new_image_f_downscale = misc.imresize(new_image_f, (32, 32, 3))
+    new_image_g_downscale = misc.imresize(new_image_g, (32, 32, 3))
+
+    new_image_final_f = (bkg_image_downscale * mask_downscale + new_image_f_downscale * (1 - mask_downscale))
+    new_image_final_g = (bkg_image_downscale * mask_downscale + new_image_g_downscale * (1 - mask_downscale))
+    non_real_new_image_final_f = (bgcolor * mask_downscale + new_image_f_downscale * (1 - mask_downscale))
+    non_real_new_image_final_g = (bgcolor * mask_downscale + new_image_g_downscale * (1 - mask_downscale))
+    
+    misc.imsave("/hdd/Documents/Data/ShapeNetCoreV2/real_plain_image_v3/" + f.split("/")[6], new_image_final_f)
+    misc.imsave("/hdd/Documents/Data/ShapeNetCoreV2/real_texture_image_mask_v3/" + f.split("/")[6], 1 - mask_downscale)
+    misc.imsave("/hdd/Documents/Data/ShapeNetCoreV2/real_texture_image_v3/" + f.split("/")[6], new_image_final_g)
+    misc.imsave("/hdd/Documents/Data/ShapeNetCoreV2/non_real_plain_image_small_v3/" + f.split("/")[6], non_real_new_image_final_f)
+    misc.imsave("/hdd/Documents/Data/ShapeNetCoreV2/non_real_texture_image_small_v3/" + f.split("/")[6], non_real_new_image_final_g)
+
+
+
+
+
+
+
+

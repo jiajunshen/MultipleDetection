@@ -12,6 +12,10 @@ IKEA_texture_img_path = sorted([join(IKEA_texture_directory, f) for f in listdir
 
 for f, g in zip(IKEA_plain_img_path, IKEA_texture_img_path):
 
+    """
+    if f.split('_')[2] != "random/02958343":
+        continue
+    """
     image_f = misc.imread(f)
     mask_f = np.array(np.product(image_f, axis = 2) == 237 * 237 * 255 * 255).reshape(500,500,1)
     mask_all_f = np.repeat(mask_f, 3, axis = 2)
@@ -51,11 +55,12 @@ for f, g in zip(IKEA_plain_img_path, IKEA_texture_img_path):
     new_image_g = new_image_g[xleft:xright, ytop:ybottom]
     mask_all_g = mask_all_g[xleft:xright, ytop:ybottom]
 
-    new_image_final_f = 1 - mask_all_f
-    new_image_final_g = 1 - mask_all_g
+    bkg_image = bgcolor
 
-    new_image_final_f = (misc.imresize(new_image_final_f, (32, 32, 3), "nearest") / 255.0 == 1)
-    new_image_final_g = (misc.imresize(new_image_final_g, (32, 32, 3), "nearest") / 255.0 == 1)
+    new_image_final_f = bkg_image * mask_all_f + new_image_f * (1 - mask_all_f)
+    new_image_final_g = bkg_image * mask_all_g + new_image_g * (1 - mask_all_g)
 
-    misc.imsave("/hdd/Documents/Data/ShapeNetCoreV2/real_plain_image_mask_new/" + f.split("/")[6], new_image_final_f)
-    misc.imsave("/hdd/Documents/Data/ShapeNetCoreV2/real_texture_image_mask_new/" + f.split("/")[6], new_image_final_g)
+    new_image_final_f = misc.imresize(new_image_final_f, (32, 32, 3)) / 255.0
+    new_image_final_g = misc.imresize(new_image_final_g, (32, 32, 3)) / 255.0
+    misc.imsave("/hdd/Documents/Data/ShapeNetCoreV2/non_real_plain_image_small_v2/" + f.split("/")[6], new_image_final_f)
+    misc.imsave("/hdd/Documents/Data/ShapeNetCoreV2/non_real_texture_image_small_v2/" + f.split("/")[6], new_image_final_g)

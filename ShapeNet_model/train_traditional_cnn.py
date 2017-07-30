@@ -88,7 +88,7 @@ def build_cnn(input_var=None):
 
     # fc3
     softmax_layer = DenseLayer(lasagne.layers.dropout(fc1, p = 0.5),
-                               num_units=10,
+                               num_units=3,
                                nonlinearity=lasagne.nonlinearities.softmax,
                                W=lasagne.init.GlorotUniform(),
                                b=lasagne.init.Constant(0.0),
@@ -118,12 +118,15 @@ def main(model='mlp', num_epochs=500):
     # Load the dataset
     print("Loading data...")
 
-    X_train, y_train, X_test, y_test = load_data("/X_train_texture.npy",
+    X_train, y_train, X_test, y_test = load_data("/X_non_real_train_texture_v2.npy",
                                                  "/Y_train.npy",
-                                                 "/X_test_texture.npy",
+                                                 #'/decluttered_test.npy',
+                                                 "/X_non_real_test_texture_v2.npy",
                                                  "/Y_test.npy",
                                                  resize=False,
                                                  standardize=True)
+    X_train = X_train
+    y_train = y_train
 
 
     print(X_train.shape, X_test.shape)
