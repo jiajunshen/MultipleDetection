@@ -30,7 +30,7 @@ IMAGE_SIZE = 32
 
 # Global constants describing the CIFAR-10 data set.
 NUM_CLASSES = 3
-NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN = 6545
+NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN = 6476
 NUM_EXAMPLES_PER_EPOCH_FOR_EVAL = 3000
 #NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN = 66
 #NUM_EXAMPLES_PER_EPOCH_FOR_EVAL = 34
@@ -231,34 +231,40 @@ class DataSet(object):
             
     
 def read_data_sets(data_dir, distortion=True, dtype=np.float32):
-    all_images = np.array(np.load(os.path.join(data_dir, "ShapeNet_Synthetic_texture.npy")).reshape(-1, 32, 32, 3),dtype=dtype)
-    all_images = np.rollaxis(all_images, 3, 1)
+    #all_images = np.array(np.load(os.path.join(data_dir, "ShapeNet_Synthetic_texture_v2.npy")).reshape(-1, 32, 32, 3),dtype=dtype)
+    #all_images = np.rollaxis(all_images, 3, 1)
     #print("extracting features...")
     #all_images = feature_extraction(all_images)
     #np.save(os.path.join(data_dir, "ShapeNet_Synthetic_texture_extracted_feature.npy"), all_images)
     #all_images_feature = np.load(os.path.join(data_dir, "ShapeNet_Synthetic_texture_extracted_feature.npy")) / 32.0
     #all_images = np.concatenate([all_images, all_images_feature], axis = 1)[:,:35]
     #all_images = np.load(os.path.join(data_dir, "extracted_feature_test.npy"))
-    print("feature extracing end, feature shape", all_images.shape)
-    all_labels = np.array(np.load(os.path.join(data_dir, "ShapeNet_Synthetic_texture_mask.npy")).reshape(-1, 32, 32, 3), dtype=dtype) > 0
-    all_labels = np.array(all_labels[:,:,:,0].reshape(-1, 32 * 32), dtype=dtype)
+    #print("feature extracing end, feature shape", all_images.shape)
+    #all_labels = np.array(np.load(os.path.join(data_dir, "ShapeNet_Synthetic_texture_mask.npy")).reshape(-1, 32, 32, 3), dtype=dtype) > 0
+    #all_labels = np.array(all_labels[:,:,:,0].reshape(-1, 32 * 32), dtype=dtype)
     #all_labels = all_labels[:100]
-    num_data = all_labels.shape[0]
+    #num_data = all_labels.shape[0]
     #index = np.arange(100)
     #np.random.shuffle(index)
     #index = np.array(np.load(os.path.join(data_dir, "shuffle_synthetic_index.npy")), dtype=np.int)
-    index = np.array(np.load(os.path.join(data_dir, "shuffle_index_3000.npy")), dtype=np.int)
-    train_images = all_images[index[: NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN]]
-    train_labels = all_labels[index[: NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN]]
-    print(train_images.shape, train_labels.shape)
+    #index = np.array(np.load(os.path.join(data_dir, "shuffle_index_3000.npy")), dtype=np.int)
+    train_image = np.array(np.load(os.path.join(data_dir, "X_real_train_texture_v2.npy")).reshape(-1, 32, 32, 3), dtype=dtype)
+    train_image = np.rollaxis(train_image, 3, 1)
+    train_labels = np.array(np.load(os.path.join(data_dir, "X_train_mask.npy")).reshape(-1, 32 * 32) // 255, dtype=dtype)
+    #train_images = all_images[index[: NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN]]
+    #train_labels = all_labels[index[: NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN]]
+    print(train_image.shape, train_labels.shape)
 
-    test_images = all_images[index[NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN:]] 
-    test_labels = all_labels[index[NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN:]]
-    print(test_images.shape, test_labels.shape)
+    test_image = np.array(np.load(os.path.join(data_dir, "X_real_test_texture_v2.npy")).reshape(-1, 32, 32, 3), dtype=dtype)
+    test_image = np.rollaxis(test_image, 3, 1)
+    test_labels = np.array(np.load(os.path.join(data_dir, "X_test_mask.npy")).reshape(-1, 32 * 32) // 255, dtype=dtype)
+    #test_images = all_images[index[NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN:]] 
+    #test_labels = all_labels[index[NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN:]]
+    print(test_image.shape, test_labels.shape)
     #train_images = train_images[:,:640]
     #test_images = test_images[:,:640]
-    train = DataSet(train_images, train_labels, distortion=distortion)
-    test = DataSet(test_images, test_labels, test=True)
+    train = DataSet(train_image, train_labels, distortion=distortion)
+    test = DataSet(test_image, test_labels, test=True)
 
     Datasets = collections.namedtuple('Datasets', ['train', 'test'])
 

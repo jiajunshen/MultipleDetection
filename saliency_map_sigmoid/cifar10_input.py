@@ -30,8 +30,8 @@ IMAGE_SIZE = 32
 
 # Global constants describing the CIFAR-10 data set.
 NUM_CLASSES = 3
-NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN = 6363
-NUM_EXAMPLES_PER_EPOCH_FOR_EVAL = 3182
+NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN = 6476
+NUM_EXAMPLES_PER_EPOCH_FOR_EVAL = 3000
 
 import collections
 
@@ -167,6 +167,7 @@ class DataSet(object):
             
     
 def read_data_sets(data_dir, distortion=True, dtype=np.float32):
+    """
     all_images = np.array(np.load(os.path.join(data_dir, "ShapeNet_Synthetic_texture.npy")).reshape(-1, 32, 32, 3),dtype=dtype)
     all_images = np.rollaxis(all_images, 3, 1)
     all_labels = np.array(np.load(os.path.join(data_dir, "ShapeNet_Synthetic_label.npy")), dtype=np.int)
@@ -177,9 +178,25 @@ def read_data_sets(data_dir, distortion=True, dtype=np.float32):
 
     test_images = all_images[index[2 * num_data // 3:]] 
     test_labels = all_labels[index[2 * num_data // 3:]]
+    """
+    
+    train_image = np.array(np.load(os.path.join(data_dir, "X_real_train_texture_v2.npy")).reshape(-1, 32, 32, 3), dtype=dtype)
+    train_image = np.rollaxis(train_image, 3, 1)
+    train_labels = np.array(np.load(os.path.join(data_dir, "Y_train.npy")),dtype=dtype)
+    #train_images = all_images[index[: NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN]]
+    #train_labels = all_labels[index[: NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN]]
+    print(train_image.shape, train_labels.shape)
 
-    train = DataSet(train_images, train_labels, distortion=distortion)
-    test = DataSet(test_images, test_labels, test=True)
+    test_image = np.array(np.load(os.path.join(data_dir, "X_real_test_texture_v2.npy")).reshape(-1, 32, 32, 3), dtype=dtype)
+    test_image = np.rollaxis(test_image, 3, 1)
+    test_labels = np.array(np.load(os.path.join(data_dir, "Y_test.npy")), dtype=dtype)
+    #test_images = all_images[index[NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN:]] 
+    #test_labels = all_labels[index[NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN:]]
+    print(test_image.shape, test_labels.shape)
+
+    
+    train = DataSet(train_image, train_labels, distortion=distortion)
+    test = DataSet(test_image, test_labels, test=True)
 
     Datasets = collections.namedtuple('Datasets', ['train', 'test'])
 

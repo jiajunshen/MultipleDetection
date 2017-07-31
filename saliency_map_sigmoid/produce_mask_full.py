@@ -97,10 +97,12 @@ def train(image_with_bkg, target_mask_file_name, target_decluttered_file_name):
     batch_size = 100
     image_masks = []
     decluttered_images = []
-    threshold = 0.5
+    threshold = 0.8
     
     for i in range(image_size // batch_size + 1):
         test_image = image_with_bkg[i * batch_size : min(i * batch_size + batch_size, image_size)]
+        if test_image.shape[0] == 0:
+            break
         predicted_target = val_fn(np.rollaxis(test_image, 3, 1))
         image_masks.append(predicted_target > threshold)
         current_image_mask = image_masks[-1].reshape(-1, 32, 32, 1)
@@ -109,6 +111,8 @@ def train(image_with_bkg, target_mask_file_name, target_decluttered_file_name):
         decluttered_images.append(current_image_mask * test_image + (1 - current_image_mask) * bgcolor)
         if i == 0:
             gr.images(predicted_target.reshape(-1, 32, 32))
+            plt.imshow(test_image.reshape(-1, 32, 32, 3)[0,:,:,:])
+            plt.show()
             plt.imshow(decluttered_images[0][0]/255.0)
             plt.show()
 

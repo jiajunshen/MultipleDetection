@@ -141,7 +141,7 @@ def train():
             checkpoint_path = os.path.join(train_dir, 'model_step%d.npy' % epoch)
             weightsOfParams = lasagne.layers.get_all_param_values(cnn_model)
             np.save(checkpoint_path, weightsOfParams)
-            latest_model_path = os.path.join(train_dir, 'latest_model.txt')
+            latest_model_path = os.path.join(train_dir, 'latest_model_test.txt')
             try:
                 os.remove(latest_model_path)
             except OSError:
