@@ -174,6 +174,12 @@ def read_data_sets(data_dir, distortion=True, dtype=np.float32, training_num=180
     train_image = np.array(np.load(os.path.join(data_dir, "real_background_10_class_train.npy")).reshape(-1, 32, 32, 3), dtype=dtype)
     train_image = np.rollaxis(train_image, 3, 1)
     train_labels = np.array(np.load(os.path.join(data_dir, "10_class_train_label.npy")),dtype=dtype)
+    total_num_train = train_image.shape[0]
+    random_index = np.arange(total_num_train)
+    np.random.shuffle(random_index)
+    train_image = train_image[random_index]
+    train_labels = train_labels[random_index]
+    
     train_image = train_image[:NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN]
     train_labels = train_labels[:NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN]
     print(train_image.shape, train_labels.shape)
