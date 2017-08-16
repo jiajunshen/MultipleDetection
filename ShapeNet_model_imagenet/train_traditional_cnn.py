@@ -88,7 +88,7 @@ def build_cnn(input_var=None):
 
     # fc3
     softmax_layer = DenseLayer(lasagne.layers.dropout(fc1, p = 0.5),
-                               num_units=3,
+                               num_units=9,
                                nonlinearity=lasagne.nonlinearities.softmax,
                                W=lasagne.init.GlorotUniform(),
                                b=lasagne.init.Constant(0.0),
@@ -118,26 +118,18 @@ def main(model='mlp', num_epochs=500):
     # Load the dataset
     print("Loading data...")
 
-    X_train, y_train, X_test, y_test = load_data(#"/cifar10_3class_train.npy",
-                                                 #"/cifar10_3class_train_label.npy",
-                                                 "/real_background_new_train.npy",
-                                                 "/real_background_new_train_label.npy",
-                                                 #"/real_background_whitebackground_train.npy",
-                                                 #"/real_background_new_train_label.npy",
-                                                 #"/real_background_whitebackground_test.npy",
-                                                 #"/real_background_new_test_label.npy",
-                                                 "/cifar10_3class_test.npy",
-                                                 #"/cifar10_test_decluttered_white_tmp_new.npy",
-                                                 #"/cifar10_test_decluttered.npy",
-                                                 "/cifar10_3class_test_label.npy",
-                                                 #"/real_plain_declutter.npy",
-                                                 #'/decluttered_test.npy',
-                                                 #"/X_real_test_texture_v2.npy",
-                                                 #"/Y_test.npy",
+    X_train, y_train, X_test, y_test = load_data("/imagenet_train.npy",
+                                                 "/imagenet_train_label.npy",
+                                                 #"/real_background_10_class_train.npy",
+                                                 #"/10_class_train_label.npy",
+                                                 "/imagenet_test.npy",
+                                                 "/imagenet_test_label.npy",
                                                  resize=False,
                                                  standardize=True)
-    X_train = X_train
-    y_train = y_train
+    train_num = 1000
+    total_num_per_class = 1000
+    X_train = np.vstack([X_train[i * total_num_per_class:i * total_num_per_class + train_num] for i in range(9)])
+    y_train = np.concatenate([y_train[i * total_num_per_class : i * total_num_per_class + train_num] for i in range(9)])
 
 
     print(X_train.shape, X_test.shape)
@@ -196,18 +188,86 @@ def main(model='mlp', num_epochs=500):
             test_err = 0
             test_acc = 0
             test_batches = 0
+            test_batches_0= 0
+            test_batches_1 = 0
+            test_batches_2 = 0
+            test_batches_3= 0
+            test_batches_4 = 0
+            test_batches_5 = 0
+            test_batches_6= 0
+            test_batches_7 = 0
+            test_batches_8 = 0
+            test_err_0 = 0
+            test_err_1 = 0
+            test_err_2 = 0
+            test_err_3 = 0
+            test_err_4 = 0
+            test_err_5 = 0
+            test_err_6 = 0
+            test_err_7 = 0
+            test_err_8 = 0
             for batch in iterate_minibatches(X_test, y_test, 100, shuffle=False):
                 inputs, targets = batch
                 err, acc, pre = val_fn(inputs, targets)
                 if test_batches == 0:
                     print(pre[:5])
+                pre = np.argmax(pre, axis = 1)
+                if np.sum(targets == 0) != 0:
+                    test_err_0 += np.mean(pre[targets == 0] == 0)
+                    test_batches_0 += 1
+                if np.sum(targets == 1) != 0:
+                    test_err_1 += np.mean(pre[targets == 1] == 1)
+                    test_batches_1 += 1
+                if np.sum(targets == 2) != 0:
+                    test_err_2 += np.mean(pre[targets == 2] == 2)
+                    test_batches_2 += 1
+                if np.sum(targets == 3) != 0:
+                    test_err_3 += np.mean(pre[targets == 3] == 3)
+                    test_batches_3 += 1
+                if np.sum(targets == 4) != 0:
+                    test_err_4 += np.mean(pre[targets == 4] == 4)
+                    test_batches_4 += 1
+                if np.sum(targets == 5) != 0:
+                    test_err_5 += np.mean(pre[targets == 5] == 5)
+                    test_batches_5 += 1
+                if np.sum(targets == 6) != 0:
+                    test_err_6 += np.mean(pre[targets == 6] == 6)
+                    test_batches_6 += 1
+                if np.sum(targets == 7) != 0:
+                    test_err_7 += np.mean(pre[targets == 7] == 7)
+                    test_batches_7 += 1
+                if np.sum(targets == 8) != 0:
+                    test_err_8 += np.mean(pre[targets == 8] == 8)
+                    test_batches_8 += 1
+                
+
                 test_err += err
                 test_acc += acc
                 test_batches += 1
+            
             print("Final results:")
             print("  test loss:\t\t\t{:.6f}".format(test_err / test_batches))
             print("  test accuracy:\t\t{:.2f} %".format(
                 test_acc / test_batches * 100))
+            print("  test accuracy 0:\t\t{:.2f} %".format(
+                np.float(test_err_0) / np.float(test_batches_0) * 100))
+            print("  test accuracy 1:\t\t{:.2f} %".format(
+                np.float(test_err_1) / np.float(test_batches_1) * 100))
+            print("  test accuracy 2:\t\t{:.2f} %".format(
+                np.float(test_err_2) / np.float(test_batches_2) * 100))
+            print("  test accuracy 3:\t\t{:.2f} %".format(
+                np.float(test_err_3) / np.float(test_batches_3) * 100))
+            print("  test accuracy 4:\t\t{:.2f} %".format(
+                np.float(test_err_4) / np.float(test_batches_4) * 100))
+            print("  test accuracy 5:\t\t{:.2f} %".format(
+                np.float(test_err_5) / np.float(test_batches_5) * 100))
+            print("  test accuracy 6:\t\t{:.2f} %".format(
+                np.float(test_err_6) / np.float(test_batches_6) * 100))
+            print("  test accuracy 7:\t\t{:.2f} %".format(
+                np.float(test_err_7) / np.float(test_batches_7) * 100))
+            print("  test accuracy 8:\t\t{:.2f} %".format(
+                np.float(test_err_8) / np.float(test_batches_8) * 100))
+
 
     weightsOfParams = lasagne.layers.get_all_param_values(network)
     for i in range(len(weightsOfParams)):
