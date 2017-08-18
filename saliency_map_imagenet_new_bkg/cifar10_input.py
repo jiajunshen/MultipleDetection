@@ -165,27 +165,37 @@ class DataSet(object):
             return self._images[start:end], self._labels[start:end]
 
 
+def per_image_standardization(images):
+    image_num, image_channel, image_height, image_width = images.shape
+    standardized_image = np.array([(images[i] - np.mean(images[i])) / \
+                                   max(np.std(images[i]), 1.0 / np.sqrt(image_channel * \
+                                                                        image_height * \
+                                                                        image_width)) \
+                                   for i in range(image_num)])
+    return standardized_image
 
 
-def read_data_sets(data_dir, distortion=True, dtype=np.float32, training_num=18000):
+def read_data_sets(data_dir, distortion=True, dtype=np.float32, training_num=180000):
     global NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN
     NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN = training_num
 
-    train_image = np.array(np.load(os.path.join(data_dir, "real_background_10_class_train_newbkg.npy")).reshape(-1, 32, 32, 3), dtype=dtype)
+    train_image = np.array(np.load(os.path.join(data_dir, "real_background_10_class_train_newbkg.npy")).reshape(-1, 32, 32, 3), dtype=dtype) / 255.0
     train_image = np.rollaxis(train_image, 3, 1)
     train_labels = np.array(np.load(os.path.join(data_dir, "10_class_train_label.npy")),dtype=dtype)
     total_num_train = train_image.shape[0]
     random_index = np.arange(total_num_train)
     np.random.shuffle(random_index)
-    train_image = train_image[random_index]
+    train_image = per_image_standardization(train_image[random_index])
     train_labels = train_labels[random_index]
     
     train_image = train_image[:NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN]
     train_labels = train_labels[:NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN]
     print(train_image.shape, train_labels.shape)
 
-    test_image = np.array(np.load(os.path.join(data_dir, "real_background_10_class_test_newbkg.npy")).reshape(-1, 32, 32, 3), dtype=dtype)
+    test_image = np.array(np.load(os.path.join(data_dir, "real_background_10_class_test_newbkg.npy")).reshape(-1, 32, 32, 3), dtype=dtype) / 255.0
+    
     test_image = np.rollaxis(test_image, 3, 1)
+    test_image = per_image_standardization(test_image)
     test_labels = np.array(np.load(os.path.join(data_dir, "10_class_test_label.npy")), dtype=dtype)
 
     print(test_image.shape, test_labels.shape)

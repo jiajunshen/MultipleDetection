@@ -30,8 +30,91 @@ TOWER_NAME = 'tower'
 
 DATA_URL = 'http://www.cs.toronto.edu/~kriz/cifar-10-binary.tar.gz'
 
-
 def build_cnn(input_var=None):
+
+    # Input layer, as usual:
+    network = lasagne.layers.InputLayer(shape=(None, 3, 32, 32),
+                                        input_var=input_var)
+
+    #norm0 = BatchNormLayer(network)
+
+    # conv1
+    conv1 = Conv2DLayer(network, num_filters=64, filter_size=(3,3),
+                        nonlinearity=lasagne.nonlinearities.rectify,
+                        pad='same', W=lasagne.init.GlorotUniform(),
+                        b=lasagne.init.Constant(0.0),
+                        name="conv1")
+
+    conv1a = Conv2DLayer(conv1, num_filters=64, filter_size=(3,3),
+                        nonlinearity=lasagne.nonlinearities.rectify,
+                        pad='same', W=lasagne.init.GlorotUniform(),
+                        b=lasagne.init.Constant(0.0),
+                        name="conv1a")
+
+
+    pool1 = MaxPool2DLayer(conv1a, pool_size=(2, 2), stride=(2, 2), pad=0)
+
+    #norm1 = BatchNormLayer(pool1)
+    # pool1
+
+
+    # conv2
+    conv2 = Conv2DLayer(lasagne.layers.dropout(pool1, p = 0.5),
+                        num_filters=128, filter_size=(3,3),
+                        nonlinearity=lasagne.nonlinearities.rectify,
+                        pad='same', W=lasagne.init.GlorotUniform(),
+                        b=lasagne.init.Constant(0.1),
+                        name='conv2')
+
+    conv2a = Conv2DLayer(conv2,
+                        num_filters=128, filter_size=(3,3),
+                        nonlinearity=lasagne.nonlinearities.rectify,
+                        pad='same', W=lasagne.init.GlorotUniform(),
+                        b=lasagne.init.Constant(0.1),
+                        name='conv2a')
+
+    pool2 = MaxPool2DLayer(conv2a, pool_size=(2, 2), stride=(2, 2), pad=0)
+
+    # norm2
+    #norm2 = BatchNormLayer(pool2)
+
+    # pool2
+
+
+    conv3 = Conv2DLayer(lasagne.layers.dropout(pool2, p = 0.5),
+                        num_filters=256, filter_size=(3,3),
+                        nonlinearity=lasagne.nonlinearities.rectify,
+                        pad='same', W=lasagne.init.GlorotUniform(),
+                        b=lasagne.init.Constant(0.1),
+                        name='conv3')
+
+    pool3 = MaxPool2DLayer(conv3, pool_size=(2, 2), stride=(2, 2), pad=0)
+
+    #norm3 = BatchNormLayer(pool3)
+
+    # fc1
+    fc1 = DenseLayer(lasagne.layers.dropout(pool3, p = 0.5),
+                     num_units=256,
+                     nonlinearity=lasagne.nonlinearities.rectify,
+                     W=lasagne.init.GlorotUniform(), b=lasagne.init.Constant(0.1),
+                     name="fc1")
+
+    # fc3
+    softmax_layer = DenseLayer(lasagne.layers.dropout(fc1, p = 0.5),
+                               num_units=9,
+                               nonlinearity=lasagne.nonlinearities.softmax,
+                               W=lasagne.init.GlorotUniform(),
+                               b=lasagne.init.Constant(0.0),
+                               name="softmax")
+
+    intermediate_layer = pool2
+    
+    weight_decay_layers = {fc1: 0.0}
+    l2_penalty = regularize_layer_params_weighted(weight_decay_layers, l2)
+
+    return softmax_layer, l2_penalty
+
+def build_cnn_old(input_var=None):
     """Build the CIFAR-10 model.
 
     Args:

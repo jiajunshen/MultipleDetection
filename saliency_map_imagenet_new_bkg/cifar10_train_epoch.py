@@ -45,7 +45,7 @@ batch_size = 400
 #                           """Directory where to write event logs """
 #                           """and checkpoint.""")
 train_dir = "./cifar10_theano_train_adam"
-max_steps = 200
+max_steps = 500
 log_device_placement = False
 validation=False
 validation_model = ""
@@ -77,7 +77,7 @@ def train(training_num):
 
     params = lasagne.layers.get_all_params(cnn_model, trainable=True)
 
-    updates = lasagne.updates.adam(loss, params, learning_rate=0.001)
+    updates = lasagne.updates.adagrad(loss, params, learning_rate=0.01)
 
     train_fn = theano.function([image_input_var, target_var], [loss, cross_entropy_loss_mean, weight_decay_penalty], updates=updates)
 
@@ -86,7 +86,7 @@ def train(training_num):
 
     val_fn = theano.function([image_input_var, target_var], [loss, test_acc])
 
-    if 1:
+    if 0:
         if os.path.isfile(os.path.join(train_dir, 'latest_model_rectify.txt')):
             weight_file = ""
             with open(os.path.join(train_dir, 'latest_model_rectify.txt'), 'r') as checkpoint_file:
@@ -98,6 +98,20 @@ def train(training_num):
                 print(model_weights[i].shape)
             final_weights = [model_weights[i] for i in range(len(model_weights) - 2)] + [current_weights[-2], current_weights[-1]]
             lasagne.layers.set_all_param_values(cnn_model, final_weights)
+    
+    if 0:
+        if os.path.isfile(os.path.join(train_dir, 'latest_model_classification.txt')):
+            weight_file = ""
+            with open(os.path.join(train_dir, 'latest_model_classification.txt'), 'r') as checkpoint_file:
+                weight_file = checkpoint_file.read().replace('\n', '')
+            print("Loading from: ", weight_file)
+            model_weights = np.load(weight_file)
+            current_weights = lasagne.layers.get_all_param_values(cnn_model)
+            for i in range(len(model_weights)):
+                print(model_weights[i].shape)
+            final_weights = model_weights
+            #final_weights = [model_weights[i] for i in range(len(model_weights) - 2)] + [current_weights[-2], current_weights[-1]]
+            lasagne.layers.set_all_param_values(cnn_model, final_weights)
 
 
     # Get images and labels for CIFAR-10.
@@ -105,7 +119,7 @@ def train(training_num):
     cifar10_data = cifar10_input.load_cifar10(training_num)
 
 
-    for epoch in range(max_steps):
+    for epoch in range(200, max_steps):
 
         start_time = time.time()
 
@@ -113,15 +127,16 @@ def train(training_num):
         total_acc_count = 0
         total_count = 0
 
-        print("Start Evaluating %d" % epoch)
+        if epoch % 5 == 0:
+            print("Start Evaluating %d" % epoch)
 
-        while(test_image is not None):
-            loss_value, acc = val_fn(test_image, test_label)
-            total_acc_count += acc * test_image.shape[0]
-            total_count += test_image.shape[0]
-            test_image, test_label = cifar10_data.test.next_eval_batch(batch_size)
+            while(test_image is not None):
+                loss_value, acc = val_fn(test_image, test_label)
+                total_acc_count += acc * test_image.shape[0]
+                total_count += test_image.shape[0]
+                test_image, test_label = cifar10_data.test.next_eval_batch(batch_size)
 
-        print("Final Accuracy: %.4f" % (float(total_acc_count / total_count)))
+            print("Final Accuracy: %.4f" % (float(total_acc_count / total_count)))
 
         print("Start To Train")
         train_image, train_label, start = cifar10_data.train.next_batch(batch_size)
@@ -139,7 +154,7 @@ def train(training_num):
         duration = time.time() - start_time
         print("Duration is", duration)
 
-        if epoch % 100 == 0 or (epoch + 1) == max_steps:
+        if epoch % 1 == 0 or (epoch + 1) == max_steps:
             checkpoint_path = os.path.join(train_dir, 'model_step%d_classification.npy' % epoch)
             weightsOfParams = lasagne.layers.get_all_param_values(cnn_model)
             np.save(checkpoint_path, weightsOfParams)
@@ -152,64 +167,6 @@ def train(training_num):
             latest_model_file.write(checkpoint_path)
             latest_model_file.close()
 
-def validate():
-    """Train CIFAR-10 for a number of steps."""
-    if os.path.isfile(validation_model):
-        all_weights = np.load(validation_model)
-    else:
-        print("Model file does not exist. Exiting....")
-        return
-
-    print("Build up the network")
-    image_input_var = T.tensor4('original_inputs')
-    target_var = T.ivector('targets')
-
-    cnn_model, weight_decay_penalty = cifar10.build_cnn(image_input_var)
-
-    model_output = lasagne.layers.get_output(cnn_model, deterministic=True)
-
-    all_layers = lasagne.layers.get_all_layers(cnn_model)
-
-    print(lasagne.layers.get_output_shape(all_layers))
-
-    cross_entropy_loss = lasagne.objectives.categorical_crossentropy(model_output, target_var)
-
-    cross_entropy_loss_mean = cross_entropy_loss.mean()
-
-    loss = cross_entropy_loss_mean + weight_decay_penalty
-
-    print("Load Model weights")
-
-    lasagne.layers.set_all_param_values(cnn_model, all_weights)
-
-    test_acc = T.mean(T.eq(T.argmax(model_output, axis = 1), target_var),
-                      dtype=theano.config.floatX)
-
-    val_fn = theano.function([image_input_var, target_var], [loss, test_acc])
-
-
-    # Get images and labels for CIFAR-10.
-
-    print("Loading Data")
-
-    cifar10_data = cifar10_input.load_cifar10()
-
-    test_image, test_label = cifar10_data.test.next_eval_batch(batch_size)
-    total_acc_count = 0
-    total_count = 0
-
-    print("Start Evaluating")
-
-    while(test_image is not None):
-        loss_value, acc = val_fn(test_image, test_label)
-        total_acc_count += acc * test_image.shape[0]
-        total_count += test_image.shape[0]
-        print(loss_value)
-        test_image, test_label = cifar10_data.test.next_eval_batch(batch_size)
-
-    print("Final Accuracy: %.4f" % (float(total_acc_count / total_count)))
-    print("Total:", total_count)
-    print("correct: ", total_acc_count)
 
 def main(argv=None):  # pylint: disable=unused-argument
     training_num = int(sys.argv[1])
