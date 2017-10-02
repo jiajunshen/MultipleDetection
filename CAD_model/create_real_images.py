@@ -1,6 +1,6 @@
-IKEA_plain_directory = "/hdd/Documents/Data/IKEA_PAIR/CAD_Plain/"
-IKEA_texture_directory = "/hdd/Documents/Data/IKEA_PAIR/CAD_Texture/"
-back_directory = "/hdd/Documents/Data/empty_room_bkg/"
+IKEA_plain_directory = "/phddata/jiajun/Research/IKEA_PAIR/CAD_Plain/"
+IKEA_texture_directory = "/phddata/jiajun/Research/IKEA_PAIR/CAD_Texture/"
+back_directory = "/phddata/jiajun/Research/IKEA_PAIR/empty_room_bkg/"
 
 from os import listdir
 from os.path import isfile, join
@@ -11,9 +11,9 @@ import matplotlib.pylab as plt
 IKEA_plain_img_path = sorted([join(IKEA_plain_directory, f) for f in listdir(IKEA_plain_directory) if isfile(join(IKEA_plain_directory, f))])
 IKEA_texture_img_path = sorted([join(IKEA_texture_directory, f) for f in listdir(IKEA_texture_directory) if isfile(join(IKEA_texture_directory, f))])
 
-file_label = [f.split('_')[1] for f in listdir(IKEA_plain_img_path)]
+file_label = [f.split('_')[3] for f in IKEA_plain_img_path]
 all_classes = np.unique(file_label).tolist()
-
+print(file_label)
 bkg_img_path = [join(back_directory, f) for f in listdir(back_directory) if isfile(join(back_directory, f))]
 
 final_images_plain = []
@@ -58,21 +58,23 @@ testing_index = []
 for item in all_classes:
     index_list = np.where(np.asarray(file_label) == item)[0].tolist()
     amount = len(index_list)
+    print index_list
     training_index += index_list[:amount // 3 * 2]
     testing_index += index_list[amount // 3 * 2:]
 
-training_plain_img = final_image_plain[training_index]
-testing_plain_img = final_image_plain[testing_index]
+training_plain_img = final_images_plain[training_index]
+testing_plain_img = final_images_plain[testing_index]
 
 training_texture_img = final_images_texture[training_index]
 testing_texture_img = final_images_texture[testing_index]
 
-np.save("/hdd/Documents/Data/IKEA_PAIR/X_plain_real_train.npy", training_plain_img)
-np.save("/hdd/Documents/Data/IKEA_PAIR/X_texture_real_train.npy", training_texture_img)
-np.save("/hdd/Documents/Data/IKEA_PAIR/X_plain_real_test.npy", testing_plain_img)
-np.save("/hdd/Documents/Data/IKEA_PAIR/X_texture_real_test.npy", testing_texture_img)
-np.save("/hdd/Documents/Data/IKEA_PAIR/Y_train_real.npy", np.asarray(file_label)[training_index])
-np.save("/hdd/Documents/Data/IKEA_PAIR/Y_test_real.npy", np.asarray(file_label)[testing_index])
+file_label_list = []
+for item in file_label:
+    file_label_list.append(all_classes.index(item))
 
-
-
+np.save("/phddata/jiajun/Research/IKEA_PAIR/X_plain_real_train.npy", training_plain_img)
+np.save("/phddata/jiajun/Research/IKEA_PAIR/X_texture_real_train.npy", training_texture_img)
+np.save("/phddata/jiajun/Research/IKEA_PAIR/X_plain_real_test.npy", testing_plain_img)
+np.save("/phddata/jiajun/Research/IKEA_PAIR/X_texture_real_test.npy", testing_texture_img)
+np.save("/phddata/jiajun/Research/IKEA_PAIR/Y_train_real.npy", np.asarray(file_label_list)[training_index])
+np.save("/phddata/jiajun/Research/IKEA_PAIR/Y_test_real.npy", np.asarray(file_label_list)[testing_index])

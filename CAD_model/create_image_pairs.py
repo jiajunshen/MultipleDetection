@@ -34,18 +34,30 @@ def _gl_vector(array, *args):
 #      if rotation > 720: rotation = 0
 
 def create_image_pairs(filename_list, save_file_list):
-    nRotation = 4
-    degreePerRotation = 360 // nRotation
-
-    for filename, save_file in zip(filename_list, save_file_list):
-        for i in range(nRotation):
+    random_rotation = True
+    if random_rotation:
+        for filename, save_file in zip(filename_list, save_file_list):
+            degreeOfRotation = np.random.randint(0, 360)
             try:
-                a = Test(filename, False, save_file, degreePerRotation * i)
+                a = Test(filename, False, save_file, degreeOfRotation)
                 a.save_image()
-                b = Test(filename, True, save_file, degreePerRotation * i)
+                b = Test(filename, True, save_file, degreeOfRotation)
                 b.save_image()
             except:
                 continue
+    else:
+        nRotation = 4
+        degreePerRotation = 360 // nRotation
+
+        for filename, save_file in zip(filename_list, save_file_list):
+            for i in range(nRotation):
+                try:
+                    a = Test(filename, False, save_file, degreePerRotation * i)
+                    a.save_image()
+                    b = Test(filename, True, save_file, degreePerRotation * i)
+                    b.save_image()
+                except:
+                    continue
     
     pyglet.app.run()
     pyglet.app.stop()
@@ -58,7 +70,7 @@ class Test(object):
         self.rotation = degree
         self.meshes = pywavefront.Wavefront(filename, draw_texture)
         self.trimesh_object = trimesh.load_mesh(filename)
-        self.current_window = pyglet.window.Window(500, 500, resizable=True)
+        self.current_window = pyglet.window.Window(100, 100, resizable=True)
         self.mesh_centroid = self.trimesh_object.centroid
         self.radius = np.max(self.trimesh_object.extents)
         self.draw_texture = draw_texture
@@ -107,7 +119,7 @@ class Test(object):
         self.meshes.draw()
         colorbuffer = pyglet.image.get_buffer_manager().get_color_buffer()
         if self.draw_texture:
-            colorbuffer.save("/hdd/Documents/Data/ShapeNetCoreV2/texture_image_4" +
+            colorbuffer.save("/hdd/Documents/Data/ShapeNetCoreV2/texture_image_random/" +
                             self.save_file + "_%d" %self.rotation + ".png")
             #colorbuffer.save("/hdd/Documents/Data/IKEA_PAIR/CAD_Texture_rotation/" +
             #                self.save_file + "_%d" %self.rotation + ".png")
@@ -117,7 +129,7 @@ class Test(object):
             self.current_window.close()
             del self.current_window
         else:
-            colorbuffer.save("/hdd/Documents/Data/ShapeNetCoreV2/plain_image_4" +
+            colorbuffer.save("/hdd/Documents/Data/ShapeNetCoreV2/plain_image_random/" +
                             self.save_file + "_%d" %self.rotation + ".png")
             #colorbuffer.save("/hdd/Documents/Data/IKEA_PAIR/CAD_Plain_rotation/" +
             #                self.save_file + "_%d" %self.rotation + ".png")

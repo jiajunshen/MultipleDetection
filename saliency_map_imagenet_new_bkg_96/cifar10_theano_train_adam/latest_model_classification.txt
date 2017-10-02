@@ -1,0 +1,1 @@
+./cifar10_theano_train_adam/model_step152_classification.npy
