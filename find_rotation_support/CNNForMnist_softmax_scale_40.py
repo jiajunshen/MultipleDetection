@@ -9,11 +9,11 @@ import theano.tensor as T
 import lasagne
 from lasagne.layers.dnn import Conv2DDNNLayer as Conv2DLayer
 from lasagne.layers.dnn import MaxPool2DDNNLayer as MaxPool2DLayer
+from dataPreparation import load_data_digit_clutter
 # from lasagne.layers import Conv2DLayer
 # from lasagne.layers import MaxPool2DLayer
 from dataPreparation import load_data
-from dataPreparation import load_data_digit_clutter
-
+import cv2
 
 def build_cnn(input_var=None):
 
@@ -58,9 +58,9 @@ def build_cnn(input_var=None):
     # And, finally, the 10-unit output layer with 50% dropout on its inputs:
     network = lasagne.layers.DenseLayer(
             lasagne.layers.dropout(network, p=.5),
-            #network,
+            # network,
             num_units=10,
-            nonlinearity=lasagne.nonlinearities.identity,
+            nonlinearity=lasagne.nonlinearities.softmax,
             # nonlinearity=lasagne.nonlinearities.sigmoid
             )
 
@@ -81,30 +81,37 @@ def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
         yield inputs[excerpt], targets[excerpt]
 
 
-def extend_image(inputs, size = 40):
-    extended_images = np.zeros((inputs.shape[0], 1, size, size), dtype = np.float32)
-    margin_size = (40 - inputs.shape[2]) / 2
-    extended_images[:, :, margin_size:margin_size + inputs.shape[2], margin_size:margin_size + inputs
-.shape[3]] = inputs
-    return extended_images
+def scale_image(inputs, size = 40):
+    scaled_inputs = np.zeros((inputs.shape[0], 1, size, size))
+    for i in range(inputs.shape[0]):
+        resized_inputs = cv2.resize(inputs[i, 0], (size, size))
+        scaled_inputs[i, 0] = resized_inputs
+    scaled_inputs = np.array(scaled_inputs, dtype = theano.config.floatX)
+    return scaled_inputs
 
 
-def main(model='mlp', num_epochs=1):
+def main(model='mlp', num_epochs=3000):
     # Load the dataset
     print("Loading data...")
     num_per_class = 100
-    print("Using %d per class" % num_per_class) 
-    
-    X_train, y_train, X_test, y_test = load_data("/X_train_limited_100.npy", "/Y_train_limited_100.npy", "/X_test.npy", "/Y_test.npy")
-    #_, _, X_test, y_test = load_data("/mnistMoreClutter.npy", "/mnistMoreClutterLabel.npy", "/mnistMoreClutterTest.npy", "/mnistMoreClutterLabelTest.npy", W=40)
-    _, _, X_test, y_test = load_data_digit_clutter("/X_train_limited_100.npy", "/Y_train_limited_100.npy", "/X_test.npy", "/Y_test.npy")
+    print("Using %d per class" % num_per_class)
 
-    X_train = extend_image(X_train, 40)
-    #X_test_all = extend_image(X_test, 40)
-    X_test = extend_image(X_test, 40)
+    X_train, y_train, X_test, y_test = load_data("/X_train.npy", "/Y_train.npy", "/X_test.npy", "/Y_test.npy")
+    # _, _, X_test, y_test = load_data_digit_clutter("/X_train_limited_100.npy", "/Y_train_limited_100.npy", "/X_test.npy", "/Y_test.npy")
+    X_train_final = []
+    y_train_final = []
+    for i in range(10):
+        X_train_class = X_train[y_train == i]
+        # permutated_index = np.random.permutation(X_train_class.shape[0])
+        permutated_index = np.arange(X_train_class.shape[0])
+        X_train_final.append(X_train_class[permutated_index[:100]])
+        y_train_final += [i] * num_per_class
+    X_train = np.vstack(X_train_final)
+    y_train = np.array(y_train_final, dtype = np.int32)
 
-    y_train = y_train
-    y_test_all = y_test[:]
+    X_train = scale_image(X_train, 40)
+    X_test = scale_image(X_test, 40)
+    #X_train, y_train, X_test, y_test = load_data("/cluttered_train_x.npy", "/cluttered_train_y.npy", "/cluttered_test_x.npy", "/cluttered_test_y.npy", dataset = "MNIST_CLUTTER")
 
     # Prepare Theano variables for inputs and targets
     input_var = T.tensor4('inputs')
@@ -117,8 +124,8 @@ def main(model='mlp', num_epochs=1):
     # Create a loss expression for training, i.e., a scalar objective we want
     # to minimize (for our multi-class problem, it is the cross-entropy loss):
     prediction = lasagne.layers.get_output(network)
-    # loss = lasagne.objectives.categorical_crossentropy(prediction, target_var)
-    loss = lasagne.objectives.multiclass_hinge_loss(prediction, target_var)
+    loss = lasagne.objectives.categorical_crossentropy(prediction, target_var)
+    #loss = lasagne.objectives.multiclass_hinge_loss(prediction, target_var)
     loss = loss.mean()
     # We could add some weight decay as well here, see lasagne.regularization.
 
@@ -147,9 +154,9 @@ def main(model='mlp', num_epochs=1):
 
     # Compile a second function computing the validation loss and accuracy:
     val_fn = theano.function([input_var, target_var], [test_loss, test_acc])
-    
-    weightsOfParams = np.load("../data/mnist_CNN_params_drop_out_Chi_2017_hinge.npy")
-    lasagne.layers.set_all_param_values(network, weightsOfParams)
+
+    # weightsOfParams = np.load("../data/mnist_CNN_params_drop_out_Chi_2017_hinge.npy")
+    # lasagne.layers.set_all_param_values(network, weightsOfParams)
 
     # Finally, launch the training loop.
     print("Starting training...")
@@ -171,7 +178,7 @@ def main(model='mlp', num_epochs=1):
             epoch + 1, num_epochs, time.time() - start_time))
         print("  training loss:\t\t{:.6f}".format(train_err / train_batches))
 
-        if epoch % 5 == 0: 
+        if epoch % 5 == 0:
             # After training, we compute and print the test error:
             test_err = 0
             test_acc = 0
@@ -199,8 +206,9 @@ def main(model='mlp', num_epochs=1):
     #np.save("../data/mnist_CNN_params_sigmoid.npy", weightsOfParams)
     #np.save("../data/mnist_CNN_params.npy", weightsOfParams)
     #np.save("../data/mnist_CNN_params_drop_out_semi_Chi_Dec7.npy", weightsOfParams)
-    #np.save("../data/mnist_CNN_params_drop_out_Chi_2017_hinge.npy", weightsOfParams)
+    # np.save("../data/mnist_CNN_params_drop_out_Chi_2017_hinge.npy", weightsOfParams)
     #np.save("../data/mnist_CNN_params_For_No_Bias_experiment_out.npy", weightsOfParams)
+    np.save("../data/mnist_CNN_params_drop_out_Chi_2017_softmax_scaled_100.npy", weightsOfParams)
 
 
 

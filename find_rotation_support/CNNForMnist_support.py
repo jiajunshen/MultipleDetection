@@ -356,7 +356,7 @@ def main(model='mlp', num_epochs=500):
 
             if epoch % 500 == 0 or epoch == num_epochs - 1:
                 weightsOfParams = lasagne.layers.get_all_param_values(network)
-                np.save("../data/CNNForMNIST_tps_support_epoch_new%d.npy" %epoch, weightsOfParams)
+                np.save("../data/CNNForMNIST_rotation_support_epoch_new%d.npy" %epoch, weightsOfParams)
 
 
 if __name__ == '__main__':

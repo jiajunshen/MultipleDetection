@@ -5,7 +5,7 @@ from collections import OrderedDict
 
 
 class SelectLayer(lasagne.layers.Layer):
-    # incoming would be n x C x W x H
+    # incoming would be n x C x W x H 
     def __init__(self, incoming, n, **kwargs):
         super(SelectLayer, self).__init__(incoming, **kwargs)
         self.n = n

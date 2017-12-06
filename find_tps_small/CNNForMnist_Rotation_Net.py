@@ -7,13 +7,32 @@ import time
 import theano
 import theano.tensor as T
 import lasagne
+import cv2
 from lasagne.layers.dnn import Conv2DDNNLayer as Conv2DLayer
 from lasagne.layers.dnn import MaxPool2DDNNLayer as MaxPool2DLayer
+from lasagne.regularization import regularize_layer_params_weighted, l2
 # from lasagne.layers import Conv2DLayer
 # from lasagne.layers import MaxPool2DLayer
 from dataPreparation import load_data
-from dataPreparation import load_data_digit_clutter
 
+# Turn nw*h to n*w*h*nRotation
+def rotateImage_batch(image, num_rotation=16):
+    result_list = []
+    for i in range(num_rotation):
+        # angle = (90.0 / num_rotation) * i - 45
+        angle = (360.0 / num_rotation) * i
+        rotated_inputs = np.array([rotateImage(image[j], angle) for j in range(image.shape[0])], dtype = np.float32)            
+        result_list.append(rotated_inputs) 
+
+    return np.array(result_list, dtype = np.float32)
+
+def rotateImage(image, angle):
+  if len(image.shape) == 3:
+        image = image[0]
+  image_center = tuple(np.array(image.shape)/2)
+  rot_mat = cv2.getRotationMatrix2D(image_center,angle,1.0)
+  result = cv2.warpAffine(image, rot_mat, image.shape,flags=cv2.INTER_LINEAR)
+  return np.array(result[:, :], dtype = np.float32)
 
 def build_cnn(input_var=None):
 
@@ -45,9 +64,10 @@ def build_cnn(input_var=None):
             #nonlinearity=lasagne.nonlinearities.sigmoid
             )
     network = lasagne.layers.MaxPool2DLayer(network, pool_size=(2, 2))
+    
 
     # A fully-connected layer of 256 units with 50% dropout on its inputs:
-    network = lasagne.layers.DenseLayer(
+    fc1  = lasagne.layers.DenseLayer(
             lasagne.layers.dropout(network, p=.5),
             #network,
             num_units=256,
@@ -56,15 +76,17 @@ def build_cnn(input_var=None):
             )
 
     # And, finally, the 10-unit output layer with 50% dropout on its inputs:
-    network = lasagne.layers.DenseLayer(
-            lasagne.layers.dropout(network, p=.5),
+    fc2  = lasagne.layers.DenseLayer(
+            lasagne.layers.dropout(fc1, p=.5),
+            nonlinearity=lasagne.nonlinearities.identity,
             #network,
             num_units=10,
-            nonlinearity=lasagne.nonlinearities.identity,
-            # nonlinearity=lasagne.nonlinearities.sigmoid
             )
+    
+    weight_decay_layers = {fc1:0.0, fc2:0.002}
+    l2_penalty = regularize_layer_params_weighted(weight_decay_layers, l2)
 
-    return network
+    return fc2, l2_penalty
 
 
 
@@ -89,37 +111,75 @@ def extend_image(inputs, size = 40):
     return extended_images
 
 
-def main(model='mlp', num_epochs=1):
+def main(model='mlp', num_epochs=2000):
     # Load the dataset
     print("Loading data...")
-    num_per_class = 100
-    print("Using %d per class" % num_per_class) 
+    # num_per_class = 100
+    # print("Using %d per class" % num_per_class) 
+    print("Using all the training data") 
     
-    X_train, y_train, X_test, y_test = load_data("/X_train_limited_100.npy", "/Y_train_limited_100.npy", "/X_test.npy", "/Y_test.npy")
-    #_, _, X_test, y_test = load_data("/mnistMoreClutter.npy", "/mnistMoreClutterLabel.npy", "/mnistMoreClutterTest.npy", "/mnistMoreClutterLabelTest.npy", W=40)
-    _, _, X_test, y_test = load_data_digit_clutter("/X_train_limited_100.npy", "/Y_train_limited_100.npy", "/X_test.npy", "/Y_test.npy")
-
+    #X_train, y_train, X_test, y_test = load_data("/X_train.npy", "/Y_train.npy", "/X_test_rotated.npy", "/Y_test_rotated.npy")
+    X_train, y_train, X_test, y_test = load_data("/mnistROT.npy", "/mnistROTLabel.npy", "/mnistROTTEST.npy", "/mnistROTLABELTEST.npy", "ROT_MNIST")
+   
+    # Only for subclass trainning 
+    # X_train_final = []
+    # y_train_final = []
+    # for i in range(10):
+    #    X_train_class = X_train[y_train == i]
+        # permutated_index = np.random.permutation(X_train_class.shape[0])
+    #    permutated_index = np.arange(X_train_class.shape[0])
+    #    X_train_final.append(X_train_class[permutated_index[:100]])
+    #    y_train_final += [i] * num_per_class
+    # X_train = np.vstack(X_train_final)
+    # y_train = np.array(y_train_final, dtype = np.int32) 
+    
     X_train = extend_image(X_train, 40)
-    #X_test_all = extend_image(X_test, 40)
     X_test = extend_image(X_test, 40)
-
-    y_train = y_train
-    y_test_all = y_test[:]
+    #X_train, y_train, X_test, y_test = load_data("/cluttered_train_x.npy", "/cluttered_train_y.npy", "/cluttered_test_x.npy", "/cluttered_test_y.npy", dataset = "MNIST_CLUTTER")
 
     # Prepare Theano variables for inputs and targets
+    nRotation = 8
+    
+    # The dimension would be (nRotation * n, w, h)
     input_var = T.tensor4('inputs')
+
+    # The dimension would be (n, )
+    vanilla_target_var = T.ivector('vanilla_targets')
+    # The dimension would be (nRotation * n , )
     target_var = T.ivector('targets')
 
     # Create neural network model (depending on first command line parameter)
-
-    network = build_cnn(input_var)
+    
+    network, weight_decay = build_cnn(input_var)
+    
+    # saved_weights = np.load("../data/mnist_Chi_dec_100.npy")
+    saved_weights = np.load("../data/mnist_CNN_params_drop_out_Chi_2017_hinge.npy")
+    lasagne.layers.set_all_param_values(network, saved_weights)
 
     # Create a loss expression for training, i.e., a scalar objective we want
     # to minimize (for our multi-class problem, it is the cross-entropy loss):
-    prediction = lasagne.layers.get_output(network)
+    # The dimension would be (nRotation * n, 10)
+    predictions = lasagne.layers.get_output(network)
+
+    # The diVmension would be (nRotation * n, 10)
+    one_hot_targets = T.extra_ops.to_one_hot(vanilla_target_var, 10)
+
+    rests = T.reshape(predictions, (nRotation, -1, 10))
+
+    # final_rests = rests[0]
+    final_rests = T.max(rests, 0)
+
+    rests = T.swapaxes(rests, 0, 2)
+    rests = T.swapaxes(rests, 0, 1)
+    rests = rests[one_hot_targets.nonzero()]
+    rests = T.max(rests, axis = 1)
+    
+    final_rests = T.set_subtensor(final_rests[one_hot_targets.nonzero()], rests)
+
     # loss = lasagne.objectives.categorical_crossentropy(prediction, target_var)
-    loss = lasagne.objectives.multiclass_hinge_loss(prediction, target_var)
-    loss = loss.mean()
+    # loss = one_vs_all_hinge_loss(final_rests, vanilla_target_var)
+    loss = lasagne.objectives.multiclass_hinge_loss(final_rests, vanilla_target_var)
+    loss = loss.mean() + weight_decay
     # We could add some weight decay as well here, see lasagne.regularization.
 
     # Create update expressions for training, i.e., how to modify the
@@ -134,22 +194,29 @@ def main(model='mlp', num_epochs=1):
     # here is that we do a deterministic forward pass through the network,
     # disabling dropout layers.
     test_prediction = lasagne.layers.get_output(network, deterministic=True)
-    test_loss = lasagne.objectives.multiclass_hinge_loss(test_prediction,
-                                                            target_var)
-    test_loss = test_loss.mean()
+    test_prediction = T.reshape(test_prediction,(nRotation, -1, 10))
+    test_prediction_res = test_prediction.max(axis = 0)
+
+    final_test_prediction_res = test_prediction[0]
+    test_prediction_process = T.swapaxes(test_prediction, 0, 2)
+    test_prediction_process = T.swapaxes(test_prediction_process, 0, 1)
+    test_prediction_process = test_prediction_process[one_hot_targets.nonzero()]
+    test_prediction_process = T.max(test_prediction_process, axis = 1)
+
+    final_test_prediction_res = T.set_subtensor(final_test_prediction_res[one_hot_targets.nonzero()], test_prediction_process)
+    
+    test_loss = lasagne.objectives.multiclass_hinge_loss(final_test_prediction_res, vanilla_target_var)
+    test_loss = test_loss.mean() + weight_decay
     # As a bonus, also create an expression for the classification accuracy:
-    test_acc = T.mean(T.eq(T.argmax(test_prediction, axis=1), target_var),
+    test_acc = T.mean(T.eq(T.argmax(test_prediction_res, axis=1), vanilla_target_var),
                       dtype=theano.config.floatX)
 
     # Compile a function performing a training step on a mini-batch (by giving
     # the updates dictionary) and returning the corresponding training loss:
-    train_fn = theano.function([input_var, target_var], [loss,prediction], updates=updates)
+    train_fn = theano.function([input_var, vanilla_target_var], loss, updates=updates)
 
     # Compile a second function computing the validation loss and accuracy:
-    val_fn = theano.function([input_var, target_var], [test_loss, test_acc])
-    
-    weightsOfParams = np.load("../data/mnist_CNN_params_drop_out_Chi_2017_hinge.npy")
-    lasagne.layers.set_all_param_values(network, weightsOfParams)
+    val_fn = theano.function([input_var, vanilla_target_var], [test_loss, test_acc])
 
     # Finally, launch the training loop.
     print("Starting training...")
@@ -161,8 +228,10 @@ def main(model='mlp', num_epochs=1):
         start_time = time.time()
         for batch in iterate_minibatches(X_train, y_train, 100, shuffle=True):
             inputs, targets = batch
-            train_batch_err, train_batch_prediction = train_fn(inputs, targets)
-            train_err += train_batch_err
+            inputs = inputs.reshape(100, 40, 40)
+            inputs = rotateImage_batch(inputs, nRotation).reshape(100 * nRotation, 1, 40, 40)
+            duplicated_targets = np.array([targets for i in range(nRotation)]).reshape(100 * nRotation,)
+            train_err += train_fn(inputs, targets)
             train_batches += 1
 
 
@@ -171,13 +240,32 @@ def main(model='mlp', num_epochs=1):
             epoch + 1, num_epochs, time.time() - start_time))
         print("  training loss:\t\t{:.6f}".format(train_err / train_batches))
 
-        if epoch % 5 == 0: 
-            # After training, we compute and print the test error:
+        if epoch % 50 == 0: 
+           # After training, we compute and print the test error:
             test_err = 0
             test_acc = 0
             test_batches = 0
             for batch in iterate_minibatches(X_test, y_test, 500, shuffle=False):
                 inputs, targets = batch
+                inputs = inputs.reshape(500, 40, 40)
+                inputs = rotateImage_batch(inputs, nRotation).reshape(500 * nRotation, 1, 40, 40)
+                err, acc = val_fn(inputs, targets)
+                test_err += err
+                test_acc += acc
+                test_batches += 1
+            print("Final results:")
+            print("  test loss:\t\t\t{:.6f}".format(test_err / test_batches))
+            print("  test accuracy:\t\t{:.2f} %".format(
+                test_acc / test_batches * 100))
+           
+            # After training, we compute and print the test error:
+            test_err = 0
+            test_acc = 0
+            test_batches = 0
+            for batch in iterate_minibatches(X_train, y_train, 500, shuffle=False):
+                inputs, targets = batch
+                inputs = inputs.reshape(500, 40, 40)
+                inputs = rotateImage_batch(inputs, nRotation).reshape(500 * nRotation, 1, 40, 40)
                 err, acc = val_fn(inputs, targets)
                 test_err += err
                 test_acc += acc
@@ -199,7 +287,7 @@ def main(model='mlp', num_epochs=1):
     #np.save("../data/mnist_CNN_params_sigmoid.npy", weightsOfParams)
     #np.save("../data/mnist_CNN_params.npy", weightsOfParams)
     #np.save("../data/mnist_CNN_params_drop_out_semi_Chi_Dec7.npy", weightsOfParams)
-    #np.save("../data/mnist_CNN_params_drop_out_Chi_2017_hinge.npy", weightsOfParams)
+    np.save("../data/mnist_CNN_params_drop_out_Chi_2017_ROT_hinge_2000.npy", weightsOfParams)
     #np.save("../data/mnist_CNN_params_For_No_Bias_experiment_out.npy", weightsOfParams)
 
 

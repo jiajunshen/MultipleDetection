@@ -14,7 +14,6 @@ from lasagne.layers.dnn import MaxPool2DDNNLayer as MaxPool2DLayer
 from dataPreparation import load_data
 from dataPreparation import load_data_digit_clutter
 
-
 def build_cnn(input_var=None):
 
     # Input layer, as usual:
@@ -60,9 +59,7 @@ def build_cnn(input_var=None):
             lasagne.layers.dropout(network, p=.5),
             #network,
             num_units=10,
-            nonlinearity=lasagne.nonlinearities.identity,
-            # nonlinearity=lasagne.nonlinearities.sigmoid
-            )
+            nonlinearity=lasagne.nonlinearities.softmax)
 
     return network
 
@@ -89,7 +86,7 @@ def extend_image(inputs, size = 40):
     return extended_images
 
 
-def main(model='mlp', num_epochs=1):
+def main(model='mlp', num_epochs=500):
     # Load the dataset
     print("Loading data...")
     num_per_class = 100
@@ -98,13 +95,20 @@ def main(model='mlp', num_epochs=1):
     X_train, y_train, X_test, y_test = load_data("/X_train_limited_100.npy", "/Y_train_limited_100.npy", "/X_test.npy", "/Y_test.npy")
     #_, _, X_test, y_test = load_data("/mnistMoreClutter.npy", "/mnistMoreClutterLabel.npy", "/mnistMoreClutterTest.npy", "/mnistMoreClutterLabelTest.npy", W=40)
     _, _, X_test, y_test = load_data_digit_clutter("/X_train_limited_100.npy", "/Y_train_limited_100.npy", "/X_test.npy", "/Y_test.npy")
-
+    X_train_final = []
+    y_train_final = []
+    for i in range(10):
+        X_train_class = X_train[y_train == i]
+        # permutated_index = np.random.permutation(X_train_class.shape[0])
+        permutated_index = np.arange(X_train_class.shape[0])
+        X_train_final.append(X_train_class[permutated_index[:100]])
+        y_train_final += [i] * num_per_class
+    X_train = np.vstack(X_train_final)
+    y_train = np.array(y_train_final, dtype = np.int32) 
+    
     X_train = extend_image(X_train, 40)
-    #X_test_all = extend_image(X_test, 40)
     X_test = extend_image(X_test, 40)
-
-    y_train = y_train
-    y_test_all = y_test[:]
+    #X_train, y_train, X_test, y_test = load_data("/cluttered_train_x.npy", "/cluttered_train_y.npy", "/cluttered_test_x.npy", "/cluttered_test_y.npy", dataset = "MNIST_CLUTTER")
 
     # Prepare Theano variables for inputs and targets
     input_var = T.tensor4('inputs')
@@ -117,8 +121,7 @@ def main(model='mlp', num_epochs=1):
     # Create a loss expression for training, i.e., a scalar objective we want
     # to minimize (for our multi-class problem, it is the cross-entropy loss):
     prediction = lasagne.layers.get_output(network)
-    # loss = lasagne.objectives.categorical_crossentropy(prediction, target_var)
-    loss = lasagne.objectives.multiclass_hinge_loss(prediction, target_var)
+    loss = lasagne.objectives.categorical_crossentropy(prediction, target_var)
     loss = loss.mean()
     # We could add some weight decay as well here, see lasagne.regularization.
 
@@ -134,7 +137,7 @@ def main(model='mlp', num_epochs=1):
     # here is that we do a deterministic forward pass through the network,
     # disabling dropout layers.
     test_prediction = lasagne.layers.get_output(network, deterministic=True)
-    test_loss = lasagne.objectives.multiclass_hinge_loss(test_prediction,
+    test_loss = lasagne.objectives.categorical_crossentropy(test_prediction,
                                                             target_var)
     test_loss = test_loss.mean()
     # As a bonus, also create an expression for the classification accuracy:
@@ -143,13 +146,10 @@ def main(model='mlp', num_epochs=1):
 
     # Compile a function performing a training step on a mini-batch (by giving
     # the updates dictionary) and returning the corresponding training loss:
-    train_fn = theano.function([input_var, target_var], [loss,prediction], updates=updates)
+    train_fn = theano.function([input_var, target_var], loss, updates=updates)
 
     # Compile a second function computing the validation loss and accuracy:
     val_fn = theano.function([input_var, target_var], [test_loss, test_acc])
-    
-    weightsOfParams = np.load("../data/mnist_CNN_params_drop_out_Chi_2017_hinge.npy")
-    lasagne.layers.set_all_param_values(network, weightsOfParams)
 
     # Finally, launch the training loop.
     print("Starting training...")
@@ -161,8 +161,7 @@ def main(model='mlp', num_epochs=1):
         start_time = time.time()
         for batch in iterate_minibatches(X_train, y_train, 100, shuffle=True):
             inputs, targets = batch
-            train_batch_err, train_batch_prediction = train_fn(inputs, targets)
-            train_err += train_batch_err
+            train_err += train_fn(inputs, targets)
             train_batches += 1
 
 
@@ -199,7 +198,8 @@ def main(model='mlp', num_epochs=1):
     #np.save("../data/mnist_CNN_params_sigmoid.npy", weightsOfParams)
     #np.save("../data/mnist_CNN_params.npy", weightsOfParams)
     #np.save("../data/mnist_CNN_params_drop_out_semi_Chi_Dec7.npy", weightsOfParams)
-    #np.save("../data/mnist_CNN_params_drop_out_Chi_2017_hinge.npy", weightsOfParams)
+    # np.save("../data/mnist_CNN_params_drop_out_Chi_2017.npy", weightsOfParams)
+    # np.save("../data/mnist_CNN_params_drop_out_Chi_2017_.npy", weightsOfParams)
     #np.save("../data/mnist_CNN_params_For_No_Bias_experiment_out.npy", weightsOfParams)
 
 
